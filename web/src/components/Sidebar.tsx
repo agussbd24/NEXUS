@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
@@ -6,7 +6,9 @@ import UserAvatar from './UserAvatar';
 import NewChatModal from './NewChatModal';
 import AdminPanel from './AdminPanel';
 import Settings from './Settings';
-import { Search, Plus, Shield, LogOut, Settings as SettingsIcon, Users, Archive, Moon, Sun } from 'lucide-react';
+import { api } from '../services/api';
+import { Search, Plus, Shield, LogOut, Settings as SettingsIcon, Users, Archive, Moon, Sun, MoreVertical, Pin, Bell, BellOff, Pencil, LogOut as LeaveIcon, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Sidebar() {
   const [search, setSearch] = useState('');
@@ -14,14 +16,27 @@ export default function Sidebar() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [menuConvoId, setMenuConvoId] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const conversations = useChatStore((s) => s.conversations);
   const currentConversation = useChatStore((s) => s.currentConversation);
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
   const fetchMessages = useChatStore((s) => s.fetchMessages);
+  const fetchConversations = useChatStore((s) => s.fetchConversations);
   const token = useAuthStore((s) => s.token)!;
   const { theme, toggleTheme } = useThemeStore();
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuConvoId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const filteredConversations = conversations.filter((c) => {
     if (showArchived ? !c.is_archived : c.is_archived) return false;
@@ -44,8 +59,54 @@ export default function Sidebar() {
   };
 
   const handleSelectConversation = async (convo: typeof conversations[0]) => {
+    setMenuConvoId(null);
     setCurrentConversation(convo);
     await fetchMessages(convo.id, token);
+  };
+
+  const handleMenuAction = async (action: string, convo: typeof conversations[0]) => {
+    setMenuConvoId(null);
+    try {
+      switch (action) {
+        case 'pin':
+          await api(`/conversations/${convo.id}/pin`, { method: 'POST', token, body: { pinned: !convo.is_pinned } });
+          toast.success(convo.is_pinned ? 'Desfijada' : 'Fijada');
+          break;
+        case 'mute':
+          await api(`/conversations/${convo.id}/mute`, { method: 'POST', token, body: { muted: !convo.is_muted } });
+          toast.success(convo.is_muted ? 'Activada' : 'Silenciada');
+          break;
+        case 'archive':
+          await api(`/conversations/${convo.id}/archive`, { method: 'POST', token, body: { archived: !convo.is_archived } });
+          toast.success(convo.is_archived ? 'Restaurada' : 'Archivada');
+          break;
+        case 'rename': {
+          const name = prompt('Nuevo nombre:', convo.name || '');
+          if (name !== null && name.trim()) {
+            await api(`/conversations/${convo.id}`, { method: 'PUT', token, body: { name: name.trim() } });
+            toast.success('Nombre actualizado');
+          }
+          break;
+        }
+        case 'leave':
+          if (confirm('Salir de esta conversacion?')) {
+            await api(`/conversations/${convo.id}/leave`, { method: 'POST', token });
+            toast.success('Saliste de la conversacion');
+            if (currentConversation?.id === convo.id) setCurrentConversation(null);
+          }
+          break;
+        case 'delete':
+          if (confirm('Eliminar esta conversacion?')) {
+            await api(`/conversations/${convo.id}`, { method: 'DELETE', token });
+            toast.success('Eliminada');
+            if (currentConversation?.id === convo.id) setCurrentConversation(null);
+          }
+          break;
+      }
+      await fetchConversations(token);
+    } catch (err: any) {
+      toast.error(err.message || 'Error');
+    }
   };
 
   return (
@@ -110,44 +171,111 @@ export default function Sidebar() {
             </div>
           ) : (
             filteredConversations.map((convo) => (
-              <button
+              <div
                 key={convo.id}
-                onClick={() => handleSelectConversation(convo)}
-                className={`w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-50 dark:border-gray-700/50 ${
+                className={`relative flex items-center border-b border-gray-50 dark:border-gray-700/50 ${
                   currentConversation?.id === convo.id ? 'bg-nexus-50 dark:bg-nexus-900/20 border-l-4 border-l-nexus-500' : ''
                 }`}
               >
-                <UserAvatar
-                  name={getConversationName(convo)}
-                  isOnline={convo.participants.some((p) => p.id !== user?.id && p.is_online)}
-                  size="md"
-                />
-                <div className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate flex items-center gap-1">
-                      {convo.is_pinned === 1 && <span className="text-nexus-500">📌</span>}
-                      {convo.name && <span className="text-nexus-500 text-xs">👥</span>}
-                      {getConversationName(convo)}
-                    </p>
-                    {convo.last_message_at && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 flex-shrink-0">
-                        {formatTime(convo.last_message_at)}
-                      </span>
-                    )}
+                <button
+                  onClick={() => handleSelectConversation(convo)}
+                  className="flex-1 p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                >
+                  <UserAvatar
+                    name={getConversationName(convo)}
+                    isOnline={convo.participants.some((p) => p.id !== user?.id && p.is_online)}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate flex items-center gap-1">
+                        {convo.is_pinned === 1 && <Pin className="w-3 h-3 text-nexus-500 fill-nexus-500 flex-shrink-0" />}
+                        {convo.name && <span className="text-nexus-500 text-xs flex-shrink-0">👥</span>}
+                        {getConversationName(convo)}
+                      </p>
+                      {convo.last_message_at && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 flex-shrink-0">
+                          {formatTime(convo.last_message_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
+                        {convo.is_muted === 1 && <BellOff className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+                        {convo.last_message || 'Sin mensajes'}
+                      </p>
+                      {convo.unread_count > 0 && (
+                        <span className="ml-2 px-2 py-0.5 bg-nexus-500 text-white text-xs rounded-full font-medium">
+                          {convo.unread_count > 99 ? '99+' : convo.unread_count}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
-                      {convo.is_muted === 1 && <span title="Silenciado">🔇</span>}
-                      {convo.last_message || 'Sin mensajes'}
-                    </p>
-                    {convo.unread_count > 0 && (
-                      <span className="ml-2 px-2 py-0.5 bg-nexus-500 text-white text-xs rounded-full font-medium">
-                        {convo.unread_count > 99 ? '99+' : convo.unread_count}
-                      </span>
-                    )}
-                  </div>
+                </button>
+
+                {/* Three dots menu */}
+                <div className="pr-2 flex-shrink-0" ref={menuConvoId === convo.id ? menuRef : undefined}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuConvoId(menuConvoId === convo.id ? null : convo.id);
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {menuConvoId === convo.id && (
+                    <div className="absolute right-2 top-12 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px] animate-in">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMenuAction('pin', convo); }}
+                        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Pin className="w-4 h-4" />
+                        {convo.is_pinned ? 'Desfijar' : 'Fijar'}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMenuAction('mute', convo); }}
+                        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        {convo.is_muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                        {convo.is_muted ? 'Activar notificaciones' : 'Silenciar'}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMenuAction('archive', convo); }}
+                        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Archive className="w-4 h-4" />
+                        {convo.is_archived ? 'Restaurar' : 'Archivar'}
+                      </button>
+                      {convo.type === 'group' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleMenuAction('rename', convo); }}
+                          className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Renombrar
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMenuAction('leave', convo); }}
+                        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                      >
+                        <LeaveIcon className="w-4 h-4" />
+                        Salir
+                      </button>
+                      <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMenuAction('delete', convo); }}
+                        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>
