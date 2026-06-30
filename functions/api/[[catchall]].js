@@ -26,16 +26,31 @@ export async function onRequest(context) {
     }
 
     const response = await fetch(targetUrl.toString(), fetchOptions);
-    const responseText = await response.text();
+    const responseBuffer = await response.arrayBuffer();
 
-    return new Response(responseText, {
+    const responseHeaders = new Headers();
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    const contentType = response.headers.get('Content-Type');
+    if (contentType) {
+      responseHeaders.set('Content-Type', contentType);
+    }
+
+    const contentDisposition = response.headers.get('Content-Disposition');
+    if (contentDisposition) {
+      responseHeaders.set('Content-Disposition', contentDisposition);
+    }
+
+    const cacheControl = response.headers.get('Cache-Control');
+    if (cacheControl) {
+      responseHeaders.set('Cache-Control', cacheControl);
+    }
+
+    return new Response(responseBuffer, {
       status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Backend no disponible', detail: error.message }), {

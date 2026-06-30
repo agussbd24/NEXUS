@@ -4,6 +4,24 @@ import type { Env } from '../types';
 
 const files = new Hono<{ Bindings: Env }>();
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 files.post('/upload', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
@@ -22,12 +40,12 @@ files.post('/upload', async (c) => {
   const key = `files/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  const base64 = arrayBufferToBase64(arrayBuffer);
 
   const metadata = {
     name: file.name,
     size: file.size,
-    type: file.type,
+    type: file.type || 'application/octet-stream',
     uploaded_by: authCtx.userId,
     uploaded_at: new Date().toISOString(),
   };
@@ -52,13 +70,12 @@ files.get('/:key{.+}', async (c) => {
 
   if (!value.value) return errorResponse('Archivo no encontrado', 404);
 
-  const base64 = value.value;
-  const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const arrayBuffer = base64ToArrayBuffer(value.value);
 
   const meta = value.metadata as any;
   const contentType = meta?.type || 'application/octet-stream';
 
-  return new Response(binary, {
+  return new Response(arrayBuffer, {
     headers: {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=31536000',
