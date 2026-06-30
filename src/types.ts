@@ -1,6 +1,5 @@
 export interface Env {
   DB: D1Database;
-  R2?: R2Bucket;
   SESSIONS: KVNamespace;
   CHAT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string;

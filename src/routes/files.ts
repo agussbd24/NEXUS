@@ -8,25 +8,33 @@ files.post('/upload', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
-  if (!c.env.R2) {
-    return errorResponse('Almacenamiento de archivos no disponible. Habilite R2 en Cloudflare.', 503);
-  }
-
   const formData = await c.req.formData();
   const fileValue = formData.get('file');
 
   if (!fileValue || typeof fileValue === 'string') return errorResponse('Archivo requerido');
   const file: File = fileValue;
 
-  // Generate unique key
+  if (file.size > 25 * 1024 * 1024) {
+    return errorResponse('El archivo no puede superar 25MB');
+  }
+
   const ext = file.name.split('.').pop() || '';
   const key = `files/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  // Upload to R2
-  await c.env.R2.put(key, file, {
-    httpMetadata: {
-      contentType: file.type,
-    },
+  const arrayBuffer = await file.arrayBuffer();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+  const metadata = {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    uploaded_by: authCtx.userId,
+    uploaded_at: new Date().toISOString(),
+  };
+
+  await c.env.SESSIONS.put(`file:${key}`, base64, {
+    expirationTtl: 86400 * 30,
+    metadata,
   });
 
   return jsonResponse({
@@ -42,34 +50,32 @@ files.get('/:key{.+}', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
-  if (!c.env.R2) {
-    return errorResponse('Almacenamiento de archivos no disponible', 503);
-  }
-
   const key = c.req.param('key');
-  const object = await c.env.R2.get(key);
+  const value = await c.env.SESSIONS.getWithMetadata(`file:${key}`);
 
-  if (!object) return errorResponse('Archivo no encontrado', 404);
+  if (!value.value) return errorResponse('Archivo no encontrado', 404);
 
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set('etag', object.httpEtag);
-  headers.set('Cache-Control', 'public, max-age=31536000');
+  const base64 = value.value;
+  const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
-  return new Response(object.body, { headers });
+  const meta = value.metadata as any;
+  const contentType = meta?.type || 'application/octet-stream';
+
+  return new Response(binary, {
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Disposition': `inline; filename="${meta?.name || 'file'}"`,
+    },
+  });
 });
 
 files.delete('/:key{.+}', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
-  if (!c.env.R2) {
-    return errorResponse('Almacenamiento de archivos no disponible', 503);
-  }
-
   const key = c.req.param('key');
-  await c.env.R2.delete(key);
-
+  await c.env.SESSIONS.delete(`file:${key}`);
   return jsonResponse({ message: 'Archivo eliminado' });
 });
 
