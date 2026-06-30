@@ -3,11 +3,14 @@ import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import UserAvatar from './UserAvatar';
 import NewChatModal from './NewChatModal';
-import { Search, Plus, Shield, LogOut, Settings, Users } from 'lucide-react';
+import AdminPanel from './AdminPanel';
+import Settings from './Settings';
+import { Search, Plus, Shield, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 
 export default function Sidebar() {
   const [search, setSearch] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -137,15 +140,26 @@ export default function Sidebar() {
               </p>
               <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
             </div>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setShowAdmin(true)}
+                className="p-2 text-gray-400 hover:text-nexus-600 hover:bg-nexus-50 rounded-lg transition-colors"
+                title="Panel de administracion"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
             <button
-              onClick={() => setShowSettings(!showSettings)}
+              onClick={() => setShowSettings(true)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+              title="Configuracion"
             >
-              <Settings className="w-4 h-4" />
+              <SettingsIcon className="w-4 h-4" />
             </button>
             <button
               onClick={logout}
               className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Cerrar sesion"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -154,6 +168,8 @@ export default function Sidebar() {
       </div>
 
       {showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} />}
+      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { RefObject } from 'react';
 import UserAvatar from './UserAvatar';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Image as ImageIcon } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -11,6 +11,7 @@ interface Message {
   file_name: string | null;
   file_size: number | null;
   is_deleted: number;
+  is_edited: number;
   created_at: string;
   sender_nombre: string;
   sender_apellido: string;
@@ -51,7 +52,12 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Group messages by date
+  const isImageFile = (name: string | null) => {
+    if (!name) return false;
+    const ext = name.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
+  };
+
   const groupedMessages: { date: string; messages: Message[] }[] = [];
   let currentDate = '';
 
@@ -65,12 +71,16 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEiIGZpbGw9IiNlNWU3ZWIiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=')] bg-gray-50">
+      {groupedMessages.length === 0 && (
+        <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          No hay mensajes todavia
+        </div>
+      )}
       {groupedMessages.map((group) => (
         <div key={group.date}>
-          {/* Date separator */}
           <div className="flex items-center justify-center my-4">
-            <div className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full font-medium">
+            <div className="px-3 py-1 bg-white/80 text-gray-600 text-xs rounded-full font-medium shadow-sm border border-gray-200">
               {new Date(group.messages[0].created_at).toLocaleDateString('es', {
                 weekday: 'long',
                 day: 'numeric',
@@ -79,7 +89,6 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
             </div>
           </div>
 
-          {/* Messages */}
           {group.messages.map((msg, idx) => {
             const isMe = msg.sender_id === currentUserId;
             const showAvatar = idx === 0 || group.messages[idx - 1].sender_id !== msg.sender_id;
@@ -123,33 +132,48 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
                     }`}
                   >
                     {msg.content_type === 'file' && msg.file_url ? (
-                      <div className="flex items-center gap-2">
-                        <div className={`p-2 rounded-lg ${isMe ? 'bg-nexus-700' : 'bg-gray-100'}`}>
-                          <FileText className={`w-5 h-5 ${isMe ? 'text-nexus-200' : 'text-gray-500'}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{msg.file_name || 'Archivo'}</p>
-                          {msg.file_size && (
-                            <p className={`text-xs ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
-                              {formatFileSize(msg.file_size)}
-                            </p>
-                          )}
-                        </div>
-                        <a
-                          href={msg.file_url}
-                          download
-                          className={`p-1.5 rounded-lg ${isMe ? 'bg-nexus-700 hover:bg-nexus-800' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
-                        >
-                          <Download className={`w-4 h-4 ${isMe ? 'text-white' : 'text-gray-600'}`} />
-                        </a>
+                      <div>
+                        {isImageFile(msg.file_name) ? (
+                          <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="block">
+                            <img
+                              src={msg.file_url}
+                              alt={msg.file_name || 'Imagen'}
+                              className="max-w-[280px] max-h-[300px] rounded-lg object-cover"
+                              loading="lazy"
+                            />
+                            <p className="text-xs mt-1 opacity-75">{msg.file_name}</p>
+                          </a>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg ${isMe ? 'bg-nexus-700' : 'bg-gray-100'}`}>
+                              <FileText className={`w-5 h-5 ${isMe ? 'text-nexus-200' : 'text-gray-500'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{msg.file_name || 'Archivo'}</p>
+                              {msg.file_size && (
+                                <p className={`text-xs ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
+                                  {formatFileSize(msg.file_size)}
+                                </p>
+                              )}
+                            </div>
+                            <a
+                              href={msg.file_url}
+                              download
+                              className={`p-1.5 rounded-lg ${isMe ? 'bg-nexus-700 hover:bg-nexus-800' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
+                            >
+                              <Download className={`w-4 h-4 ${isMe ? 'text-white' : 'text-gray-600'}`} />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                     )}
                   </div>
 
-                  <p className={`text-xs mt-0.5 ${isMe ? 'text-right mr-1' : 'ml-1'} text-gray-400`}>
+                  <p className={`text-[10px] mt-0.5 ${isMe ? 'text-right mr-1' : 'ml-1'} text-gray-400`}>
                     {formatDate(msg.created_at)}
+                    {msg.is_edited && <span className="ml-1">(editado)</span>}
                   </p>
                 </div>
               </div>

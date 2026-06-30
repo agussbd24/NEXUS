@@ -46,52 +46,53 @@ auth.post('/setup', async (c) => {
 });
 
 auth.post('/login', async (c) => {
-  const { dni, password } = await c.req.json();
+  try {
+    const body = await c.req.json();
+    const { dni, password } = body;
 
-  if (!dni || !password) {
-    return errorResponse('DNI y contraseña son requeridos');
+    if (!dni || !password) {
+      return errorResponse('DNI y contraseña son requeridos');
+    }
+
+    const user = await c.env.DB.prepare(
+      'SELECT id, dni, nombre, apellido, password_hash, role, avatar_url FROM users WHERE dni = ?'
+    ).bind(dni).first();
+
+    if (!user) {
+      return errorResponse('Credenciales inválidas', 401);
+    }
+
+    const passwordValid = await verifyPassword(password, user.password_hash as string);
+    if (!passwordValid) {
+      return errorResponse('Credenciales inválidas', 401);
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE users SET last_seen = datetime('now'), is_online = 1 WHERE id = ?"
+    ).bind(user.id).run();
+
+    const token = await signJWT(
+      { sub: user.id, dni: user.dni, role: user.role },
+      c.env.JWT_SECRET,
+      86400 * 7
+    );
+
+    await c.env.SESSIONS.put(`session:${user.id}`, token, { expirationTtl: 86400 * 7 });
+
+    return jsonResponse({
+      token,
+      user: {
+        id: user.id,
+        dni: user.dni,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        role: user.role,
+        avatar_url: user.avatar_url,
+      },
+    });
+  } catch (err: any) {
+    return errorResponse(`Error login: ${err.message || err}`, 500);
   }
-
-  const user = await c.env.DB.prepare(
-    'SELECT id, dni, nombre, apellido, password_hash, role, avatar_url FROM users WHERE dni = ?'
-  ).bind(dni).first();
-
-  if (!user) {
-    return errorResponse('Credenciales inválidas', 401);
-  }
-
-  // Verify password using Web Crypto
-  const passwordValid = await verifyPassword(password, user.password_hash as string);
-  if (!passwordValid) {
-    return errorResponse('Credenciales inválidas', 401);
-  }
-
-  // Update last_seen
-  await c.env.DB.prepare(
-    "UPDATE users SET last_seen = datetime('now'), is_online = 1 WHERE id = ?"
-  ).bind(user.id).run();
-
-  // Generate JWT
-  const token = await signJWT(
-    { sub: user.id, dni: user.dni, role: user.role },
-    c.env.JWT_SECRET,
-    86400 * 7 // 7 days
-  );
-
-  // Store session
-  await c.env.SESSIONS.put(`session:${user.id}`, token, { expirationTtl: 86400 * 7 });
-
-  return jsonResponse({
-    token,
-    user: {
-      id: user.id,
-      dni: user.dni,
-      nombre: user.nombre,
-      apellido: user.apellido,
-      role: user.role,
-      avatar_url: user.avatar_url,
-    },
-  });
 });
 
 auth.post('/register', async (c) => {

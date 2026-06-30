@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { uploadFile } from '../services/api';
-import { Send, Paperclip, Smile, Mic, X, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface MessageInputProps {
@@ -14,32 +14,26 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
   const [text, setText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const token = useAuthStore((s) => s.token)!;
 
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, []);
+  }, [previewUrl]);
 
   const handleTextChange = (value: string) => {
     setText(value);
-
-    // Handle typing indicator
     onTyping(true);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    typingTimeoutRef.current = setTimeout(() => {
-      onTyping(false);
-    }, 2000);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => onTyping(false), 2000);
 
-    // Auto-resize textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
@@ -55,6 +49,7 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
         const result = await uploadFile(selectedFile, token);
         onSend(text.trim(), result.url, result.name, result.size);
         setSelectedFile(null);
+        setPreviewUrl(null);
         setText('');
       } catch (err: any) {
         toast.error(err.message || 'Error al subir archivo');
@@ -66,15 +61,9 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
       setText('');
     }
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     onTyping(false);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -92,7 +81,19 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
         return;
       }
       setSelectedFile(file);
+      if (file.type.startsWith('image/')) {
+        setPreviewUrl(URL.createObjectURL(file));
+      } else {
+        setPreviewUrl(null);
+      }
     }
+    e.target.value = '';
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -103,36 +104,63 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
 
   return (
     <div className="border-t border-gray-200 bg-white p-3">
-      {/* Selected file preview */}
+      {/* File preview */}
       {selectedFile && (
-        <div className="mb-2 flex items-center gap-2 p-2 bg-gray-50 rounded-xl">
-          <Paperclip className="w-4 h-4 text-gray-500" />
-          <span className="text-sm text-gray-700 flex-1 truncate">{selectedFile.name}</span>
-          <span className="text-xs text-gray-400">{formatFileSize(selectedFile.size)}</span>
-          <button
-            onClick={() => setSelectedFile(null)}
-            className="p-1 text-gray-400 hover:text-red-500 rounded"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="mb-2 p-2 bg-gray-50 rounded-xl">
+          {previewUrl ? (
+            <div className="relative inline-block">
+              <img src={previewUrl} alt="Preview" className="max-h-32 rounded-lg" />
+              <button
+                onClick={clearFile}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-700 flex-1 truncate">{selectedFile.name}</span>
+              <span className="text-xs text-gray-400">{formatFileSize(selectedFile.size)}</span>
+              <button onClick={clearFile} className="p-1 text-gray-400 hover:text-red-500 rounded">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       <div className="flex items-end gap-2">
-        {/* File upload button */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors flex-shrink-0"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
+        {/* File upload */}
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
+        </div>
+        <input
+          ref={imageInputRef}
+          type="file"
+          onChange={handleFileSelect}
+          className="hidden"
+          accept="image/*"
+        />
         <input
           ref={fileInputRef}
           type="file"
           onChange={handleFileSelect}
           className="hidden"
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4"
         />
 
         {/* Text input */}
@@ -148,7 +176,7 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
           />
         </div>
 
-        {/* Send / Mic button */}
+        {/* Send button */}
         {text.trim() || selectedFile ? (
           <button
             onClick={handleSend}

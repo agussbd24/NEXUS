@@ -127,7 +127,6 @@ conversations.delete('/:id', async (c) => {
 
   const convoId = parseInt(c.req.param('id'));
 
-  // Check if admin of conversation or system admin
   const member = await c.env.DB.prepare(
     'SELECT role FROM participants WHERE conversation_id = ? AND user_id = ?'
   ).bind(convoId, authCtx.userId).first();
@@ -136,8 +135,62 @@ conversations.delete('/:id', async (c) => {
     return errorResponse('No tiene permisos para eliminar esta conversación', 403);
   }
 
+  await c.env.DB.prepare('DELETE FROM messages WHERE conversation_id = ?').bind(convoId).run();
+  await c.env.DB.prepare('DELETE FROM read_receipts WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = ?)').bind(convoId).run();
+  await c.env.DB.prepare('DELETE FROM participants WHERE conversation_id = ?').bind(convoId).run();
   await c.env.DB.prepare('DELETE FROM conversations WHERE id = ?').bind(convoId).run();
   return jsonResponse({ message: 'Conversación eliminada' });
+});
+
+conversations.post('/:id/participants', async (c) => {
+  const authCtx = await authenticate(c.req.raw, c.env);
+  if (!authCtx) return errorResponse('No autorizado', 401);
+
+  const convoId = parseInt(c.req.param('id'));
+  const { user_id } = await c.req.json();
+
+  if (!user_id) return errorResponse('user_id requerido');
+
+  const member = await c.env.DB.prepare(
+    'SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?'
+  ).bind(convoId, authCtx.userId).first();
+  if (!member) return errorResponse('No es participante', 403);
+
+  const existing = await c.env.DB.prepare(
+    'SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?'
+  ).bind(convoId, user_id).first();
+  if (existing) return errorResponse('Ya es participante');
+
+  await c.env.DB.prepare(
+    'INSERT INTO participants (conversation_id, user_id) VALUES (?, ?)'
+  ).bind(convoId, user_id).run();
+
+  return jsonResponse({ message: 'Participante agregado' }, 201);
+});
+
+conversations.delete('/:id/participants/:userId', async (c) => {
+  const authCtx = await authenticate(c.req.raw, c.env);
+  if (!authCtx) return errorResponse('No autorizado', 401);
+
+  const convoId = parseInt(c.req.param('id'));
+  const targetUserId = parseInt(c.req.param('userId'));
+
+  const member = await c.env.DB.prepare(
+    'SELECT role FROM participants WHERE conversation_id = ? AND user_id = ?'
+  ).bind(convoId, authCtx.userId).first();
+  if (!member) return errorResponse('No es participante', 403);
+
+  if (targetUserId === authCtx.userId) return errorResponse('No puede quitarse a si mismo');
+
+  if (member.role !== 'admin' && authCtx.role !== 'admin') {
+    return errorResponse('Solo admins pueden remover participantes', 403);
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM participants WHERE conversation_id = ? AND user_id = ?'
+  ).bind(convoId, targetUserId).run();
+
+  return jsonResponse({ message: 'Participante removido' });
 });
 
 export default conversations;

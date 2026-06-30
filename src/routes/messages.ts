@@ -166,4 +166,33 @@ messages.post('/:conversationId/read', async (c) => {
   return jsonResponse({ message: 'Mensajes marcados como leídos' });
 });
 
+messages.get('/:conversationId/poll', async (c) => {
+  const authCtx = await authenticate(c.req.raw, c.env);
+  if (!authCtx) return errorResponse('No autorizado', 401);
+
+  const convoId = parseInt(c.req.param('conversationId'));
+  const lastId = parseInt(c.req.query('last_id') || '0');
+
+  const member = await c.env.DB.prepare(
+    'SELECT 1 FROM participants WHERE conversation_id = ? AND user_id = ?'
+  ).bind(convoId, authCtx.userId).first();
+  if (!member) return errorResponse('No es participante', 403);
+
+  const { results: newMessages } = await c.env.DB.prepare(`
+    SELECT m.*, u.nombre as sender_nombre, u.apellido as sender_apellido, u.avatar_url as sender_avatar
+    FROM messages m JOIN users u ON m.sender_id = u.id
+    WHERE m.conversation_id = ? AND m.id > ?
+    ORDER BY m.created_at ASC LIMIT 50
+  `).bind(convoId, lastId).all();
+
+  const { results: onlineUsers } = await c.env.DB.prepare(
+    'SELECT id FROM users WHERE is_online = 1 AND id != ?'
+  ).bind(authCtx.userId).all();
+
+  return jsonResponse({
+    messages: newMessages,
+    online_users: onlineUsers.map((u) => u.id),
+  });
+});
+
 export default messages;

@@ -4,28 +4,39 @@ export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
 
-  // The function receives /api/auth/me, forward to worker as /api/auth/me
   const targetUrl = new URL(url.pathname, WORKER_URL);
   targetUrl.search = url.search;
 
   try {
-    const response = await fetch(targetUrl.toString(), {
+    const headers = {};
+    request.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'host') {
+        headers[key] = value;
+      }
+    });
+
+    const fetchOptions = {
       method: request.method,
-      headers: request.headers,
-      body: request.body,
-    });
+      headers,
+    };
 
-    const newResponse = new Response(response.body, {
+    if (request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
+      const bodyArray = new Uint8Array(await request.arrayBuffer());
+      fetchOptions.body = bodyArray;
+    }
+
+    const response = await fetch(targetUrl.toString(), fetchOptions);
+    const responseText = await response.text();
+
+    return new Response(responseText, {
       status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
-
-    newResponse.headers.set('Access-Control-Allow-Origin', '*');
-    newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    return newResponse;
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Backend no disponible', detail: error.message }), {
       status: 502,
