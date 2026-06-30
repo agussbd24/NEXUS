@@ -8,6 +8,10 @@ files.post('/upload', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
+  if (!c.env.R2) {
+    return errorResponse('Almacenamiento de archivos no disponible. Habilite R2 en Cloudflare.', 503);
+  }
+
   const formData = await c.req.formData();
   const fileValue = formData.get('file');
 
@@ -38,6 +42,10 @@ files.get('/:key{.+}', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
+  if (!c.env.R2) {
+    return errorResponse('Almacenamiento de archivos no disponible', 503);
+  }
+
   const key = c.req.param('key');
   const object = await c.env.R2.get(key);
 
@@ -54,6 +62,10 @@ files.get('/:key{.+}', async (c) => {
 files.delete('/:key{.+}', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
+
+  if (!c.env.R2) {
+    return errorResponse('Almacenamiento de archivos no disponible', 503);
+  }
 
   const key = c.req.param('key');
   await c.env.R2.delete(key);

@@ -7,17 +7,17 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "nexus-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "5036aba9-abbf-4d13-8822-3e0147e257af"
 
-# R2 Bucket for files
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "nexus-files"
+# R2 Bucket for files (ENABLE R2 IN CLOUDFLARE DASHBOARD FIRST)
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "nexus-files"
 
 # KV for sessions/cache
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "248c560a31f54458bcc6ac1d1c517392"
 
 # Durable Objects for real-time chat
 [[durable_objects.bindings]]
@@ -26,7 +26,7 @@ class_name = "ChatRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["ChatRoom"]
+new_sqlite_classes = ["ChatRoom"]
 
 # JWT Secret (set via: wrangler secret put JWT_SECRET)
 # [vars]

@@ -5,6 +5,46 @@ import type { Env } from '../types';
 
 const auth = new Hono<{ Bindings: Env }>();
 
+// Setup endpoint - only works when no users exist
+auth.post('/setup', async (c) => {
+  const { dni, nombre, apellido, password } = await c.req.json();
+
+  // Check if any users exist
+  const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
+  if (userCount && userCount.count > 0) {
+    return errorResponse('Ya existe un usuario. Use el panel de administracion.', 403);
+  }
+
+  if (!dni || !nombre || !apellido || !password) {
+    return errorResponse('Todos los campos son requeridos');
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  const result = await c.env.DB.prepare(
+    'INSERT INTO users (dni, nombre, apellido, password_hash, role) VALUES (?, ?, ?, ?, ?)'
+  ).bind(dni, nombre, apellido, passwordHash, 'admin').run();
+
+  // Generate JWT and login
+  const token = await signJWT(
+    { sub: result.meta.last_row_id, dni, role: 'admin' },
+    c.env.JWT_SECRET,
+    86400 * 7
+  );
+
+  return jsonResponse({
+    message: 'Admin creado exitosamente',
+    token,
+    user: {
+      id: result.meta.last_row_id,
+      dni,
+      nombre,
+      apellido,
+      role: 'admin',
+    },
+  }, 201);
+});
+
 auth.post('/login', async (c) => {
   const { dni, password } = await c.req.json();
 

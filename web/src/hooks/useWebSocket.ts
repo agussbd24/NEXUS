@@ -19,8 +19,8 @@ export function useWebSocket(conversationId: number | null) {
       wsRef.current.close();
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${conversationId}?token=${token}`;
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || `${window.location.protocol}//${window.location.host}`;
+    const wsUrl = `${wsBaseUrl}/ws/chat/${conversationId}?token=${token}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
