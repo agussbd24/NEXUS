@@ -108,7 +108,7 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
         );
       case 'pdf':
         return (
-          <div className="cursor-pointer" onClick={() => setShowModal(true)}>
+          <div className="cursor-pointer" onClick={() => window.open(url, '_blank')}>
             <div className={`flex items-center gap-3 p-3 rounded-xl ${isMe ? 'bg-white/10' : 'bg-red-50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-800/30'}`}>
               <div className="p-2.5 bg-red-100 dark:bg-red-900/40 rounded-xl flex-shrink-0">
                 <FileText className="w-6 h-6 text-red-600 dark:text-red-400" />
