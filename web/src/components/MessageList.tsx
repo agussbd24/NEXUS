@@ -82,14 +82,18 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
       case 'image':
         return (
           <div className="cursor-pointer group/img" onClick={() => setShowModal(true)}>
+            {msg.file_name && <p className="text-xs font-semibold truncate mb-1 max-w-[300px]">{msg.file_name}</p>}
             <img src={url} alt={msg.file_name || ''} className="max-w-[300px] max-h-[350px] rounded-xl object-cover shadow-sm transition-transform group-hover/img:scale-[1.02]" loading="lazy" />
           </div>
         );
       case 'video':
         return (
-          <video controls className="max-w-[300px] max-h-[350px] rounded-xl shadow-sm">
-            <source src={url} />
-          </video>
+          <div>
+            {msg.file_name && <p className="text-xs font-semibold truncate mb-1 max-w-[300px]">{msg.file_name}</p>}
+            <video controls className="max-w-[300px] max-h-[350px] rounded-xl shadow-sm">
+              <source src={url} />
+            </video>
+          </div>
         );
       case 'audio':
         return (
@@ -105,14 +109,17 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
       case 'pdf':
         return (
           <div className="cursor-pointer" onClick={() => setShowModal(true)}>
-            <div className="flex items-center gap-2 mb-2">
-              {badge('PDF', 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}
-              <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
-            </div>
-            <div className="w-full h-[300px] border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
-              <object data={url} type="application/pdf" className="w-full h-full">
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm">No se puede previsualizar</div>
-              </object>
+            <div className={`flex items-center gap-3 p-3 rounded-xl ${isMe ? 'bg-white/10' : 'bg-red-50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-800/30'}`}>
+              <div className="p-2.5 bg-red-100 dark:bg-red-900/40 rounded-xl flex-shrink-0">
+                <FileText className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{msg.file_name || 'Documento PDF'}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {badge('PDF', 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -175,7 +182,23 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
           </button>
           <div className="max-w-5xl max-h-[90vh] w-full animate-scale-in" onClick={(e) => e.stopPropagation()}>
             {category === 'image' && <img src={url} alt={msg.file_name || ''} className="max-w-full max-h-[85vh] mx-auto rounded-2xl object-contain shadow-2xl" />}
-            {category === 'pdf' && <object data={url} type="application/pdf" className="w-full h-[85vh] rounded-2xl bg-white shadow-2xl" />}
+            {category === 'pdf' && (
+              <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-2xl mb-4">
+                  <FileText className="w-10 h-10 text-red-600" />
+                </div>
+                <p className="text-lg font-bold text-gray-900 mb-1">{msg.file_name || 'Documento PDF'}</p>
+                <p className="text-sm text-gray-500 mb-6">{msg.file_size ? formatFileSize(msg.file_size) : ''}</p>
+                <div className="flex gap-3 justify-center">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 bg-nexus-600 hover:bg-nexus-500 text-white font-medium rounded-xl transition-colors">
+                    Abrir en nueva pestana
+                  </a>
+                  <a href={url} download={msg.file_name} className="px-6 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-colors">
+                    Descargar
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
