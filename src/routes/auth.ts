@@ -181,54 +181,45 @@ auth.post('/change-password', async (c) => {
   return jsonResponse({ message: 'Contraseña actualizada exitosamente' });
 });
 
-// Helper functions for password hashing using Web Crypto (bcrypt-compatible)
+// Helper functions for password hashing using Web Crypto
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveBits', 'deriveKey']
-  );
+  const passwordBytes = new TextEncoder().encode(password + Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''));
 
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt']
-  );
+  const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBytes);
+  const hashArray = new Uint8Array(hashBuffer);
 
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(password);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encoded
-  );
-
-  // Format: iterations:salt_hex:iv_hex:encrypted_hex
   const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-  const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
-  const encHex = Array.from(new Uint8Array(encrypted)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
 
-  return `pbkdf2:100000:${saltHex}:${ivHex}:${encHex}`;
+  return `sha256:${saltHex}:${hashHex}`;
 }
 
 async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
+    if (hash.startsWith('sha256:')) {
+      const parts = hash.split(':');
+      const salt = parts[1];
+      const storedHash = parts[2];
+
+      const passwordBytes = new TextEncoder().encode(password + salt);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBytes);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hashHex = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      return hashHex === storedHash;
+    }
+
+    // Legacy format support (pbkdf2)
     if (hash.startsWith('pbkdf2:')) {
       const parts = hash.split(':');
-      const iterations = parseInt(parts[1]);
-      const salt = new Uint8Array(parts[2].match(/.{2}/g)!.map(h => parseInt(h, 16)));
-      const iv = new Uint8Array(parts[3].match(/.{2}/g)!.map(h => parseInt(h, 16)));
-      const encrypted = new Uint8Array(parts[4].match(/.{2}/g)!.map(h => parseInt(h, 16)));
+      const saltHex = parts[2];
+      const ivHex = parts[3];
+      const encHex = parts[4];
+
+      const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map(h => parseInt(h, 16)));
+      const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map(h => parseInt(h, 16)));
+      const encrypted = new Uint8Array(encHex.match(/.{2}/g)!.map(h => parseInt(h, 16)));
 
       const keyMaterial = await crypto.subtle.importKey(
         'raw',
@@ -239,7 +230,7 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
       );
 
       const key = await crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         false,
@@ -254,6 +245,7 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 
       return new TextDecoder().decode(decrypted) === password;
     }
+
     return false;
   } catch {
     return false;
