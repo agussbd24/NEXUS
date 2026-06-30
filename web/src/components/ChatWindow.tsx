@@ -23,6 +23,7 @@ export default function ChatWindow() {
   const [externalFiles, setExternalFiles] = useState<File[] | null>(null);
   const [highlightMessageId, setHighlightMessageId] = useState<number | null>(null);
   const dragCounterRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token)!;
@@ -82,6 +83,33 @@ export default function ChatWindow() {
     }
   }, [messages, currentConversation, user?.id, token, markAsRead, isAtBottom]);
 
+  // Debounced search - filters as user types
+  useEffect(() => {
+    if (!showSearch || !currentConversation) return;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const data = await api(`/messages/${currentConversation.id}/search?q=${encodeURIComponent(searchQuery)}`, { token });
+        setSearchResults(data.messages);
+      } catch {
+        // silently fail on debounce
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery, showSearch, currentConversation?.id, token]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     setUnreadCount(0);
@@ -100,19 +128,6 @@ export default function ChatWindow() {
       replyTo?.id
     );
     setReplyTo(null);
-  };
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || !currentConversation) return;
-    setSearching(true);
-    try {
-      const data = await api(`/messages/${currentConversation.id}/search?q=${encodeURIComponent(searchQuery)}`, { token });
-      setSearchResults(data.messages);
-    } catch {
-      toast.error('Error al buscar');
-    } finally {
-      setSearching(false);
-    }
   };
 
   const handleMute = async () => {
@@ -335,14 +350,19 @@ export default function ChatWindow() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="Buscar en conversacion..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchResults.length > 0) {
+                scrollToMessage(searchResults[0].id);
+                setSearchResults([]);
+                setSearchQuery('');
+                setShowSearch(false);
+              }
+            }}
+            placeholder="Buscar mensajes o archivos..."
             className="flex-1 px-3 py-2 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl text-sm outline-none dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-nexus-500/30 transition-all"
             autoFocus
           />
-          <button onClick={handleSearch} disabled={searching} className="px-4 py-2 bg-gradient-to-r from-nexus-600 to-nexus-500 text-white text-sm font-medium rounded-xl transition-all btn-premium">
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
-          </button>
+          {searching && <Loader2 className="w-4 h-4 text-nexus-500 animate-spin absolute right-24 top-1/2 -translate-y-1/2" />}
           <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -364,7 +384,10 @@ export default function ChatWindow() {
                   <span className="text-xs font-semibold text-nexus-700 dark:text-nexus-300">{msg.sender_nombre} {msg.sender_apellido}</span>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(msg.created_at).toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{msg.content}</p>
+                {msg.file_name && (
+                  <p className="text-[11px] text-nexus-500 dark:text-nexus-400 font-medium truncate">📎 {msg.file_name}</p>
+                )}
+                {msg.content && <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{msg.content}</p>}
               </div>
               <span className="text-xs text-nexus-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">Ir →</span>
             </button>
