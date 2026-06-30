@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -19,6 +19,9 @@ export default function ChatWindow() {
   const [replyTo, setReplyTo] = useState<any>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [externalFiles, setExternalFiles] = useState<File[] | null>(null);
+  const dragCounterRef = useRef(0);
 
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token)!;
@@ -187,6 +190,40 @@ export default function ChatWindow() {
     }
   };
 
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      setExternalFiles(files);
+    }
+  }, []);
+
   const handleReact = (messageId: number, emoji: string) => {};
 
   const handlePinMessage = async (messageId: number) => {
@@ -217,7 +254,22 @@ export default function ChatWindow() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full relative">
+    <div
+      className="flex-1 flex flex-col h-full relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 bg-nexus-500/10 dark:bg-nexus-400/10 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-nexus-500 p-12 text-center">
+            <div className="text-5xl mb-4">📎</div>
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">Suelta los archivos aqui</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Se enviaran automaticamente</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <button
@@ -334,6 +386,8 @@ export default function ChatWindow() {
         conversationName={conversationName}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        externalFiles={externalFiles}
+        onExternalFilesConsumed={() => setExternalFiles(null)}
       />
     </div>
   );

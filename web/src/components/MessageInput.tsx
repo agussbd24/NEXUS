@@ -11,6 +11,8 @@ interface MessageInputProps {
   conversationName: string;
   replyTo?: { id: number; content: string; sender: string } | null;
   onCancelReply?: () => void;
+  externalFiles?: File[] | null;
+  onExternalFilesConsumed?: () => void;
 }
 
 interface PendingFile {
@@ -18,12 +20,11 @@ interface PendingFile {
   previewUrl?: string;
 }
 
-export default function MessageInput({ onSend, onTyping, conversationName, replyTo, onCancelReply }: MessageInputProps) {
+export default function MessageInput({ onSend, onTyping, conversationName, replyTo, onCancelReply, externalFiles, onExternalFilesConsumed }: MessageInputProps) {
   const [text, setText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -37,6 +38,13 @@ export default function MessageInput({ onSend, onTyping, conversationName, reply
       pendingFiles.forEach((pf) => { if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl); });
     };
   }, []);
+
+  useEffect(() => {
+    if (externalFiles && externalFiles.length > 0) {
+      addFiles(externalFiles);
+      onExternalFilesConsumed?.();
+    }
+  }, [externalFiles]);
 
   const handleTextChange = (value: string) => {
     setText(value);
@@ -117,19 +125,8 @@ export default function MessageInput({ onSend, onTyping, conversationName, reply
     }
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
     if (e.dataTransfer.files.length > 0) {
       addFiles(e.dataTransfer.files);
     }
@@ -153,17 +150,8 @@ export default function MessageInput({ onSend, onTyping, conversationName, reply
   return (
     <div
       ref={containerRef}
-      className={`border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 transition-colors ${isDragOver ? 'bg-nexus-50 dark:bg-nexus-900/20 border-nexus-400' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 transition-colors"
     >
-      {isDragOver && (
-        <div className="mb-2 p-4 border-2 border-dashed border-nexus-400 rounded-xl text-center text-nexus-600 dark:text-nexus-400 text-sm">
-          Suelta los archivos aqui
-        </div>
-      )}
-
       {/* Reply preview */}
       {replyTo && (
         <div className="mb-2 p-2 bg-nexus-50 dark:bg-nexus-900/30 rounded-xl border-l-4 border-nexus-500 flex items-center justify-between">
