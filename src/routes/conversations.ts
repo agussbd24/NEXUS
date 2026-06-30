@@ -10,7 +10,11 @@ conversations.get('/', async (c) => {
 
   const { results } = await c.env.DB.prepare(`
     SELECT c.*,
-      (SELECT content FROM messages WHERE conversation_id = c.id AND is_deleted = 0 ORDER BY created_at DESC LIMIT 1) as last_message,
+      COALESCE(
+        (SELECT content FROM messages WHERE conversation_id = c.id AND is_deleted = 0 AND content IS NOT NULL AND content != '' ORDER BY created_at DESC LIMIT 1),
+        (SELECT '📎 ' || file_name FROM messages WHERE conversation_id = c.id AND is_deleted = 0 AND file_name IS NOT NULL ORDER BY created_at DESC LIMIT 1),
+        'Sin mensajes'
+      ) as last_message,
       (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
       (SELECT sender_id FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_sender,
       (SELECT COUNT(*) FROM messages m
