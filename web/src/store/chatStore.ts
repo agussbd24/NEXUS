@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
+let fetchMessagesGeneration = 0;
+
 interface Participant {
   id: number;
   nombre: string;
@@ -85,7 +87,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   fetchMessages: async (conversationId, token) => {
     try {
+      const gen = ++fetchMessagesGeneration;
       const data = await api(`/messages/${conversationId}?limit=100`, { token });
+      if (gen !== fetchMessagesGeneration) return;
       set({ messages: data.messages });
     } catch {}
   },
@@ -105,10 +109,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   addMessage: (message) => {
     const state = get();
-    // Avoid duplicates
-    if (state.messages.find((m) => m.id === message.id)) return;
+    const isCurrentConvo = state.currentConversation?.id === message.conversation_id;
 
-    set({ messages: [...state.messages, message] });
+    // Only add to messages array if it belongs to the current conversation
+    if (isCurrentConvo) {
+      if (state.messages.find((m) => m.id === message.id)) return;
+      set({ messages: [...state.messages, message] });
+    }
 
     // Update conversation list
     const convos = state.conversations.map((c) => {
