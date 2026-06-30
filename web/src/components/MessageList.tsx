@@ -87,7 +87,11 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
               <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
             </div>
             <div className="w-full h-[300px] border border-gray-200 rounded-lg overflow-hidden bg-white">
-              <iframe src={url} className="w-full h-full" title={msg.file_name || 'PDF'} />
+              <object data={url} type="application/pdf" className="w-full h-full">
+                <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                  No se puede previsualizar el PDF
+                </div>
+              </object>
             </div>
           </div>
         );
@@ -150,7 +154,7 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
           </button>
           <div className="max-w-5xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
             {category === 'image' && <img src={url} alt={msg.file_name || ''} className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain" />}
-            {category === 'pdf' && <iframe src={url} className="w-full h-[85vh] rounded-lg bg-white" title={msg.file_name || 'PDF'} />}
+            {category === 'pdf' && <object data={url} type="application/pdf" className="w-full h-[85vh] rounded-lg bg-white" />}
           </div>
         </div>
       )}
