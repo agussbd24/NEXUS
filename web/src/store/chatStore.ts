@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 
-let fetchMessagesGeneration = 0;
-
 interface Participant {
   id: number;
   nombre: string;
@@ -10,6 +8,14 @@ interface Participant {
   avatar_url: string | null;
   is_online: number;
   role: string;
+}
+
+interface Reaction {
+  message_id: number;
+  user_id: number;
+  emoji: string;
+  user_nombre: string;
+  user_apellido: string;
 }
 
 interface Conversation {
@@ -24,6 +30,9 @@ interface Conversation {
   last_message_at: string | null;
   last_message_sender: number | null;
   unread_count: number;
+  is_muted: number;
+  is_archived: number;
+  is_pinned: number;
   participants: Participant[];
 }
 
@@ -39,10 +48,12 @@ interface Message {
   reply_to: number | null;
   is_edited: number;
   is_deleted: number;
+  is_pinned: number;
   created_at: string;
   sender_nombre: string;
   sender_apellido: string;
   sender_avatar: string | null;
+  reactions?: Reaction[];
 }
 
 interface ChatState {
@@ -52,15 +63,20 @@ interface ChatState {
   typingUsers: Set<number>;
   connectedUsers: Set<number>;
   loading: boolean;
+  pendingMessages: Map<string, { content: string; tempId: string; conversationId: number }>;
   fetchConversations: (token: string) => Promise<void>;
   setCurrentConversation: (convo: Conversation | null) => void;
-  fetchMessages: (conversationId: number, token: string) => Promise<void>;
-  sendMessage: (conversationId: number, content: string, token: string, contentType?: string, fileUrl?: string, fileName?: string, fileSize?: number) => Promise<void>;
+  fetchMessages: (conversationId: number, token: string, search?: string) => Promise<void>;
+  sendMessage: (conversationId: number, content: string, token: string, contentType?: string, fileUrl?: string, fileName?: string, fileSize?: number, replyTo?: number) => Promise<string>;
   addMessage: (message: Message) => void;
+  editMessage: (message: Message) => void;
+  removeMessage: (messageId: number) => void;
+  updateReactions: (messageId: number, reactions: Reaction[]) => void;
   setTypingUser: (userId: number, typing: boolean) => void;
   setConnectedUser: (userId: number, connected: boolean) => void;
   createConversation: (type: string, participantIds: number[], name?: string, token?: string) => Promise<number>;
   markAsRead: (conversationId: number, messageId: number, token: string) => Promise<void>;
+  searchMessages: (conversationId: number, query: string, token: string) => Promise<Message[]>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -70,6 +86,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   typingUsers: new Set(),
   connectedUsers: new Set(),
   loading: false,
+  pendingMessages: new Map(),
 
   fetchConversations: async (token) => {
     set({ loading: true });
@@ -85,24 +102,65 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ currentConversation: convo, messages: [] });
   },
 
-  fetchMessages: async (conversationId, token) => {
+  fetchMessages: async (conversationId, token, search) => {
     try {
       const gen = ++fetchMessagesGeneration;
-      const data = await api(`/messages/${conversationId}?limit=100`, { token });
+      let url = `/messages/${conversationId}?limit=100`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      const data = await api(url, { token });
       if (gen !== fetchMessagesGeneration) return;
       set({ messages: data.messages });
     } catch {}
   },
 
-  sendMessage: async (conversationId, content, token, contentType = 'text', fileUrl, fileName, fileSize) => {
+  sendMessage: async (conversationId, content, token, contentType = 'text', fileUrl, fileName, fileSize, replyTo) => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    const optimisticMsg: Message = {
+      id: parseInt(tempId.replace(/\D/g, '').slice(0, 10)) || Date.now(),
+      conversation_id: conversationId,
+      sender_id: 0,
+      content,
+      content_type: fileUrl ? 'file' : contentType,
+      file_url: fileUrl || null,
+      file_name: fileName || null,
+      file_size: fileSize || null,
+      reply_to: replyTo || null,
+      is_edited: 0,
+      is_deleted: 0,
+      is_pinned: 0,
+      created_at: new Date().toISOString(),
+      sender_nombre: '',
+      sender_apellido: '',
+      sender_avatar: null,
+    };
+
+    set((state) => ({
+      messages: [...state.messages, optimisticMsg],
+      pendingMessages: new Map(state.pendingMessages).set(tempId, { content, tempId, conversationId }),
+    }));
+
     try {
       const data = await api(`/messages/${conversationId}`, {
         method: 'POST',
         token,
-        body: { content, content_type: contentType, file_url: fileUrl, file_name: fileName, file_size: fileSize },
+        body: { content, content_type: contentType, file_url: fileUrl, file_name: fileName, file_size: fileSize, reply_to: replyTo },
       });
-      // Message will come via WebSocket, but also add locally for instant feedback
+
+      set((state) => {
+        const newPending = new Map(state.pendingMessages);
+        newPending.delete(tempId);
+        const msgs = state.messages.map((m) => m.id === optimisticMsg.id ? { ...data.message, reactions: [] } : m);
+        return { messages: msgs, pendingMessages: newPending };
+      });
+
+      return tempId;
     } catch (err) {
+      set((state) => {
+        const newPending = new Map(state.pendingMessages);
+        newPending.delete(tempId);
+        return { messages: state.messages.filter((m) => m.id !== optimisticMsg.id), pendingMessages: newPending };
+      });
       throw err;
     }
   },
@@ -111,13 +169,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const state = get();
     const isCurrentConvo = state.currentConversation?.id === message.conversation_id;
 
-    // Only add to messages array if it belongs to the current conversation
     if (isCurrentConvo) {
       if (state.messages.find((m) => m.id === message.id)) return;
-      set({ messages: [...state.messages, message] });
+      set({ messages: [...state.messages, { ...message, reactions: message.reactions || [] }] });
     }
 
-    // Update conversation list
     const convos = state.conversations.map((c) => {
       if (c.id === message.conversation_id) {
         return {
@@ -138,6 +194,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const dateB = b.last_message_at || b.created_at;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     })});
+  },
+
+  editMessage: (message) => {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === message.id ? { ...m, content: message.content, is_edited: 1 } : m
+      ),
+    }));
+  },
+
+  removeMessage: (messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId ? { ...m, is_deleted: 1, content: null, file_url: null } : m
+      ),
+    }));
+  },
+
+  updateReactions: (messageId, reactions) => {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId ? { ...m, reactions } : m
+      ),
+    }));
   },
 
   setTypingUser: (userId, typing) => {
@@ -162,7 +242,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       token: token!,
       body: { type, participant_ids: participantIds, name },
     });
-    // Refresh conversations
     await get().fetchConversations(token!);
     return data.conversationId;
   },
@@ -174,11 +253,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
         token,
         body: { message_id: messageId },
       });
-      // Update unread count
       const convos = get().conversations.map((c) =>
         c.id === conversationId ? { ...c, unread_count: 0 } : c
       );
       set({ conversations: convos });
     } catch {}
   },
+
+  searchMessages: async (conversationId, query, token) => {
+    try {
+      const data = await api(`/messages/${conversationId}/search?q=${encodeURIComponent(query)}`, { token });
+      return data.messages;
+    } catch {
+      return [];
+    }
+  },
 }));
+
+let fetchMessagesGeneration = 0;

@@ -12,6 +12,7 @@ interface User {
   apellido: string;
   role: string;
   avatar_url: string | null;
+  status: string;
   last_seen: string;
   is_online: number;
 }
@@ -28,9 +29,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const token = useAuthStore((s) => s.token)!;
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
     try {
@@ -71,27 +70,23 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-nexus-600" />
-            <h2 className="text-lg font-semibold">Panel de Administracion</h2>
+            <Shield className="w-5 h-5 text-nexus-600 dark:text-nexus-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Panel de Administracion</h2>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-3 border-b border-gray-100">
+        <div className="p-3 border-b border-gray-100 dark:border-gray-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre o DNI..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500"
-            />
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white" />
           </div>
         </div>
 
@@ -101,63 +96,39 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               <Loader2 className="w-6 h-6 text-nexus-500 animate-spin mx-auto" />
             </div>
           ) : filteredUsers.map((user) => (
-            <div key={user.id} className="p-3 flex items-center gap-3 border-b border-gray-50 hover:bg-gray-50">
+            <div key={user.id} className="p-3 flex items-center gap-3 border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
               <UserAvatar name={`${user.nombre} ${user.apellido}`} isOnline={!!user.is_online} size="sm" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.nombre} {user.apellido}</p>
-                <p className="text-xs text-gray-500">DNI: {user.dni}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.nombre} {user.apellido}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">DNI: {user.dni}</p>
+                {user.status && <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.status}</p>}
               </div>
-              <select
-                value={user.role}
-                onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-nexus-500"
-              >
+              <select value={user.role} onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                className="text-xs px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-nexus-500">
                 <option value="agente">Agente</option>
                 <option value="oficial">Oficial</option>
                 <option value="admin">Admin</option>
               </select>
-              <button
-                onClick={() => setEditingUser(user)}
-                className="p-1.5 text-gray-400 hover:text-nexus-600 hover:bg-nexus-50 rounded-lg"
-              >
+              <button onClick={() => setEditingUser(user)} className="p-1.5 text-gray-400 hover:text-nexus-600 dark:hover:text-nexus-400 hover:bg-nexus-50 dark:hover:bg-nexus-900/30 rounded-lg">
                 <Edit3 className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => handleDelete(user.id)}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-              >
+              <button onClick={() => handleDelete(user.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
           ))}
         </div>
 
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setShowCreate(true)}
-            className="w-full py-2.5 bg-nexus-600 hover:bg-nexus-500 text-white font-medium rounded-xl transition-colors"
-          >
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <button onClick={() => setShowCreate(true)}
+            className="w-full py-2.5 bg-nexus-600 hover:bg-nexus-500 text-white font-medium rounded-xl transition-colors">
             + Crear Usuario
           </button>
         </div>
       </div>
 
-      {showCreate && (
-        <CreateUserModal
-          onClose={() => setShowCreate(false)}
-          onCreated={loadUsers}
-          token={token}
-        />
-      )}
-
-      {editingUser && (
-        <EditUserModal
-          user={editingUser}
-          onClose={() => setEditingUser(null)}
-          onUpdated={loadUsers}
-          token={token}
-        />
-      )}
+      {showCreate && <CreateUserModal onClose={() => setShowCreate(false)} onCreated={loadUsers} token={token} />}
+      {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onUpdated={loadUsers} token={token} />}
     </div>
   );
 }
@@ -190,26 +161,26 @@ function CreateUserModal({ onClose, onCreated, token }: { onClose: () => void; o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <h3 className="text-lg font-semibold mb-4">Crear Usuario</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Crear Usuario</h3>
         <div className="space-y-3">
           <input type="text" placeholder="DNI" value={dni} onChange={(e) => setDni(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
           <input type="text" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
           <input type="text" placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
           <input type="password" placeholder="Contrasena" value={password} onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
           <select value={role} onChange={(e) => setRole(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500">
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700">
             <option value="agente">Agente</option>
             <option value="oficial">Oficial</option>
             <option value="admin">Admin</option>
           </select>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">Cancelar</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Cancelar</button>
           <button onClick={handleCreate} disabled={loading}
             className="flex-1 py-2 bg-nexus-600 text-white rounded-xl text-sm hover:bg-nexus-500 disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Crear'}
@@ -241,16 +212,16 @@ function EditUserModal({ user, onClose, onUpdated, token }: { user: User; onClos
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <h3 className="text-lg font-semibold mb-4">Editar Usuario</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Editar Usuario</h3>
         <div className="space-y-3">
           <input type="text" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
           <input type="text" placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500" />
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white dark:bg-gray-700" />
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">Cancelar</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Cancelar</button>
           <button onClick={handleSave} disabled={loading}
             className="flex-1 py-2 bg-nexus-600 text-white rounded-xl text-sm hover:bg-nexus-500 disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Guardar'}

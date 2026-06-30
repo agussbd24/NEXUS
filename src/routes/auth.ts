@@ -5,11 +5,35 @@ import type { Env } from '../types';
 
 const auth = new Hono<{ Bindings: Env }>();
 
-// Setup endpoint - only works when no users exist
+async function checkRateLimit(db: D1Database, identifier: string, action: string, maxAttempts: number, windowSeconds: number): Promise<boolean> {
+  const record = await db.prepare(
+    'SELECT attempts, window_start FROM rate_limits WHERE identifier = ? AND action = ?'
+  ).bind(identifier, action).first<{ attempts: number; window_start: string }>();
+
+  if (record) {
+    const windowStart = new Date(record.window_start).getTime();
+    const now = Date.now();
+    if (now - windowStart < windowSeconds * 1000) {
+      if (record.attempts >= maxAttempts) return false;
+      await db.prepare(
+        'UPDATE rate_limits SET attempts = attempts + 1 WHERE identifier = ? AND action = ?'
+      ).bind(identifier, action).run();
+    } else {
+      await db.prepare(
+        'UPDATE rate_limits SET attempts = 1, window_start = datetime(\'now\') WHERE identifier = ? AND action = ?'
+      ).bind(identifier, action).run();
+    }
+  } else {
+    await db.prepare(
+      'INSERT INTO rate_limits (identifier, action, attempts, window_start) VALUES (?, ?, 1, datetime(\'now\'))'
+    ).bind(identifier, action).run();
+  }
+  return true;
+}
+
 auth.post('/setup', async (c) => {
   const { dni, nombre, apellido, password } = await c.req.json();
 
-  // Check if any users exist
   const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
   if (userCount && userCount.count > 0) {
     return errorResponse('Ya existe un usuario. Use el panel de administracion.', 403);
@@ -25,7 +49,6 @@ auth.post('/setup', async (c) => {
     'INSERT INTO users (dni, nombre, apellido, password_hash, role) VALUES (?, ?, ?, ?, ?)'
   ).bind(dni, nombre, apellido, passwordHash, 'admin').run();
 
-  // Generate JWT and login
   const token = await signJWT(
     { sub: result.meta.last_row_id, dni, role: 'admin' },
     c.env.JWT_SECRET,
@@ -51,20 +74,25 @@ auth.post('/login', async (c) => {
     const { dni, password } = body;
 
     if (!dni || !password) {
-      return errorResponse('DNI y contraseña son requeridos');
+      return errorResponse('DNI y contrasena son requeridos');
+    }
+
+    const allowed = await checkRateLimit(c.env.DB, `login:${dni}`, 'login', 5, 300);
+    if (!allowed) {
+      return errorResponse('Demasiados intentos. Espere 5 minutos.', 429);
     }
 
     const user = await c.env.DB.prepare(
-      'SELECT id, dni, nombre, apellido, password_hash, role, avatar_url FROM users WHERE dni = ?'
+      'SELECT id, dni, nombre, apellido, password_hash, role, avatar_url, status FROM users WHERE dni = ?'
     ).bind(dni).first();
 
     if (!user) {
-      return errorResponse('Credenciales inválidas', 401);
+      return errorResponse('Credenciales invalidas', 401);
     }
 
     const passwordValid = await verifyPassword(password, user.password_hash as string);
     if (!passwordValid) {
-      return errorResponse('Credenciales inválidas', 401);
+      return errorResponse('Credenciales invalidas', 401);
     }
 
     await c.env.DB.prepare(
@@ -88,6 +116,7 @@ auth.post('/login', async (c) => {
         apellido: user.apellido,
         role: user.role,
         avatar_url: user.avatar_url,
+        status: user.status || '',
       },
     });
   } catch (err: any) {
@@ -98,7 +127,6 @@ auth.post('/login', async (c) => {
 auth.post('/register', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
 
-  // Only admin can register new users
   if (!authCtx || authCtx.role !== 'admin') {
     return errorResponse('No autorizado. Solo administradores pueden crear usuarios.', 403);
   }
@@ -109,7 +137,6 @@ auth.post('/register', async (c) => {
     return errorResponse('Todos los campos son requeridos');
   }
 
-  // Check if DNI already exists
   const existing = await c.env.DB.prepare('SELECT id FROM users WHERE dni = ?').bind(dni).first();
   if (existing) {
     return errorResponse('Ya existe un usuario con ese DNI');
@@ -134,7 +161,7 @@ auth.get('/me', async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, dni, nombre, apellido, role, avatar_url, created_at, last_seen FROM users WHERE id = ?'
+    'SELECT id, dni, nombre, apellido, role, avatar_url, status, created_at, last_seen FROM users WHERE id = ?'
   ).bind(authCtx.userId).first();
 
   if (!user) {
@@ -152,7 +179,7 @@ auth.post('/logout', async (c) => {
     ).bind(authCtx.userId).run();
     await c.env.SESSIONS.delete(`session:${authCtx.userId}`);
   }
-  return jsonResponse({ message: 'Sesión cerrada' });
+  return jsonResponse({ message: 'Sesion cerrada' });
 });
 
 auth.post('/change-password', async (c) => {
@@ -163,7 +190,7 @@ auth.post('/change-password', async (c) => {
 
   const { currentPassword, newPassword } = await c.req.json();
   if (!currentPassword || !newPassword) {
-    return errorResponse('Contraseña actual y nueva contraseña son requeridas');
+    return errorResponse('Contrasena actual y nueva contrasena son requeridas');
   }
 
   const user = await c.env.DB.prepare(
@@ -171,7 +198,7 @@ auth.post('/change-password', async (c) => {
   ).bind(authCtx.userId).first();
 
   if (!user || !(await verifyPassword(currentPassword, user.password_hash as string))) {
-    return errorResponse('Contraseña actual incorrecta', 401);
+    return errorResponse('Contrasena actual incorrecta', 401);
   }
 
   const newHash = await hashPassword(newPassword);
@@ -179,10 +206,21 @@ auth.post('/change-password', async (c) => {
     'UPDATE users SET password_hash = ? WHERE id = ?'
   ).bind(newHash, authCtx.userId).run();
 
-  return jsonResponse({ message: 'Contraseña actualizada exitosamente' });
+  return jsonResponse({ message: 'Contrasena actualizada exitosamente' });
 });
 
-// Helper functions for password hashing using Web Crypto
+auth.put('/status', async (c) => {
+  const authCtx = await authenticate(c.req.raw, c.env);
+  if (!authCtx) return errorResponse('No autorizado', 401);
+
+  const { status } = await c.req.json();
+  await c.env.DB.prepare(
+    'UPDATE users SET status = ? WHERE id = ?'
+  ).bind(status || '', authCtx.userId).run();
+
+  return jsonResponse({ message: 'Estado actualizado' });
+});
+
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const passwordBytes = new TextEncoder().encode(password + Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''));
@@ -211,7 +249,6 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
       return hashHex === storedHash;
     }
 
-    // Legacy format support (pbkdf2)
     if (hash.startsWith('pbkdf2:')) {
       const parts = hash.split(':');
       const saltHex = parts[2];

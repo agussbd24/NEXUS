@@ -9,7 +9,7 @@ users.get('/', async (c) => {
   if (!authCtx) return errorResponse('No autorizado', 401);
 
   const { search } = c.req.query();
-  let query = 'SELECT id, dni, nombre, apellido, role, avatar_url, last_seen, is_online FROM users';
+  let query = 'SELECT id, dni, nombre, apellido, role, avatar_url, status, last_seen, is_online FROM users';
   const params: any[] = [];
 
   if (search) {
@@ -33,7 +33,7 @@ users.get('/:id', async (c) => {
   if (!authCtx) return errorResponse('No autorizado', 401);
 
   const user = await c.env.DB.prepare(
-    'SELECT id, dni, nombre, apellido, role, avatar_url, created_at, last_seen, is_online FROM users WHERE id = ?'
+    'SELECT id, dni, nombre, apellido, role, avatar_url, status, created_at, last_seen, is_online FROM users WHERE id = ?'
   ).bind(c.req.param('id')).first();
 
   if (!user) return errorResponse('Usuario no encontrado', 404);
@@ -44,13 +44,12 @@ users.put('/:id', async (c) => {
   const authCtx = await authenticate(c.req.raw, c.env);
   if (!authCtx) return errorResponse('No autorizado', 401);
 
-  // Only admin or own user can update
   const targetId = parseInt(c.req.param('id'));
   if (authCtx.role !== 'admin' && authCtx.userId !== targetId) {
     return errorResponse('No tiene permisos para editar este usuario', 403);
   }
 
-  const { nombre, apellido, role, avatar_url } = await c.req.json();
+  const { nombre, apellido, role, avatar_url, status } = await c.req.json();
 
   const updates: string[] = [];
   const params: any[] = [];
@@ -59,6 +58,7 @@ users.put('/:id', async (c) => {
   if (apellido) { updates.push('apellido = ?'); params.push(apellido); }
   if (role && authCtx.role === 'admin') { updates.push('role = ?'); params.push(role); }
   if (avatar_url !== undefined) { updates.push('avatar_url = ?'); params.push(avatar_url); }
+  if (status !== undefined) { updates.push('status = ?'); params.push(status); }
 
   if (updates.length === 0) return errorResponse('No hay campos para actualizar');
 
@@ -78,10 +78,23 @@ users.delete('/:id', async (c) => {
 
   const targetId = parseInt(c.req.param('id'));
   if (authCtx.userId === targetId) {
-    return errorResponse('No puede eliminarse a sí mismo');
+    return errorResponse('No puede eliminarse a si mismo');
   }
 
+  await c.env.DB.prepare('DELETE FROM reactions WHERE user_id = ?').bind(targetId).run();
+  await c.env.DB.prepare('DELETE FROM read_receipts WHERE user_id = ?').bind(targetId).run();
+  await c.env.DB.prepare('DELETE FROM participants WHERE user_id = ?').bind(targetId).run();
+
+  const { results: userMessages } = await c.env.DB.prepare(
+    'SELECT id FROM messages WHERE sender_id = ?'
+  ).bind(targetId).all();
+  for (const msg of userMessages) {
+    await c.env.DB.prepare('DELETE FROM reactions WHERE message_id = ?').bind(msg.id).run();
+  }
+  await c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ?').bind(targetId).run();
+
   await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
+
   return jsonResponse({ message: 'Usuario eliminado' });
 });
 

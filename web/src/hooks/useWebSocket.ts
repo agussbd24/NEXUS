@@ -1,17 +1,19 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
-import type { Message } from '../store/chatStore';
 
 const POLL_INTERVAL = 3000;
 
 export function useWebSocket(conversationId: number | null) {
   const wsRef = useRef<WebSocket | null>(null);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMessageIdRef = useRef<number>(0);
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const addMessage = useChatStore((s) => s.addMessage);
+  const editMessage = useChatStore((s) => s.editMessage);
+  const removeMessage = useChatStore((s) => s.removeMessage);
+  const updateReactions = useChatStore((s) => s.updateReactions);
   const setTypingUser = useChatStore((s) => s.setTypingUser);
   const setConnectedUser = useChatStore((s) => s.setConnectedUser);
 
@@ -24,7 +26,7 @@ export function useWebSocket(conversationId: number | null) {
       if (!res.ok) return;
       const data = await res.json();
       if (data.messages && data.messages.length > 0) {
-        data.messages.forEach((msg: Message) => {
+        data.messages.forEach((msg: any) => {
           if (msg.id > lastMessageIdRef.current) {
             lastMessageIdRef.current = msg.id;
             addMessage(msg);
@@ -68,16 +70,29 @@ export function useWebSocket(conversationId: number | null) {
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const data = JSON.parse(event.data as string);
           switch (data.type) {
             case 'message':
-              addMessage(data.payload as Message);
+              addMessage(data.payload);
+              break;
+            case 'edit':
+              editMessage(data.payload);
+              break;
+            case 'delete':
+              removeMessage(data.payload.id);
+              break;
+            case 'reaction':
+              updateReactions(data.payload.message_id, data.payload.reactions);
               break;
             case 'typing':
               setTypingUser(data.user_id, data.payload.typing);
               break;
             case 'online':
               setConnectedUser(data.payload.userId, data.payload.online);
+              break;
+            case 'read':
+              break;
+            case 'pin':
               break;
           }
         } catch {}
@@ -95,7 +110,7 @@ export function useWebSocket(conversationId: number | null) {
     } catch {
       startPolling();
     }
-  }, [conversationId, token, user, addMessage, setTypingUser, setConnectedUser]);
+  }, [conversationId, token, user, addMessage, editMessage, removeMessage, updateReactions, setTypingUser, setConnectedUser]);
 
   const startPolling = useCallback(() => {
     if (pollRef.current) return;

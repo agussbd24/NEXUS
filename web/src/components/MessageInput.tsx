@@ -1,32 +1,42 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { uploadFile } from '../services/api';
-import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Smile, ArrowUp } from 'lucide-react';
+import EmojiPicker from './EmojiPicker';
 import toast from 'react-hot-toast';
 
 interface MessageInputProps {
   onSend: (content: string, fileUrl?: string, fileName?: string, fileSize?: number) => void;
   onTyping: (typing: boolean) => void;
   conversationName: string;
+  replyTo?: { id: number; content: string; sender: string } | null;
+  onCancelReply?: () => void;
 }
 
-export default function MessageInput({ onSend, onTyping, conversationName }: MessageInputProps) {
+interface PendingFile {
+  file: File;
+  previewUrl?: string;
+}
+
+export default function MessageInput({ onSend, onTyping, conversationName, replyTo, onCancelReply }: MessageInputProps) {
   const [text, setText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const containerRef = useRef<HTMLDivElement>(null);
   const token = useAuthStore((s) => s.token)!;
 
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      pendingFiles.forEach((pf) => { if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl); });
     };
-  }, [previewUrl]);
+  }, []);
 
   const handleTextChange = (value: string) => {
     setText(value);
@@ -40,17 +50,34 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
     }
   };
 
-  const handleSend = async () => {
-    if (!text.trim() && !selectedFile) return;
+  const addFiles = (files: FileList | File[]) => {
+    const newFiles: PendingFile[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`${file.name} supera 25MB`);
+        continue;
+      }
+      const pf: PendingFile = { file };
+      if (file.type.startsWith('image/')) {
+        pf.previewUrl = URL.createObjectURL(file);
+      }
+      newFiles.push(pf);
+    }
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+  };
 
-    if (selectedFile) {
+  const handleSend = async () => {
+    if (!text.trim() && pendingFiles.length === 0) return;
+
+    if (pendingFiles.length > 0) {
       setIsUploading(true);
       try {
-        const result = await uploadFile(selectedFile, token);
-        onSend(text.trim(), result.url, result.name, result.size);
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        setText('');
+        for (const pf of pendingFiles) {
+          const result = await uploadFile(pf.file, token);
+          onSend(text.trim() || '', result.url, result.name, result.size);
+          setText('');
+        }
+        setPendingFiles([]);
       } catch (err: any) {
         toast.error(err.message || 'Error al subir archivo');
       } finally {
@@ -74,26 +101,47 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error('El archivo no puede superar 25MB');
-        return;
-      }
-      setSelectedFile(file);
-      if (file.type.startsWith('image/')) {
-        setPreviewUrl(URL.createObjectURL(file));
-      } else {
-        setPreviewUrl(null);
-      }
-    }
+    if (e.target.files) addFiles(e.target.files);
     e.target.value = '';
   };
 
-  const clearFile = () => {
-    setSelectedFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) addFiles([file]);
+      }
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
+  }, []);
+
+  const removeFile = (index: number) => {
+    setPendingFiles((prev) => {
+      const updated = [...prev];
+      if (updated[index].previewUrl) URL.revokeObjectURL(updated[index].previewUrl);
+      updated.splice(index, 1);
+      return updated;
+    });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -103,80 +151,108 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white p-3">
-      {/* File preview */}
-      {selectedFile && (
-        <div className="mb-2 p-2 bg-gray-50 rounded-xl">
-          {previewUrl ? (
-            <div className="relative inline-block">
-              <img src={previewUrl} alt="Preview" className="max-h-32 rounded-lg" />
+    <div
+      ref={containerRef}
+      className={`border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 transition-colors ${isDragOver ? 'bg-nexus-50 dark:bg-nexus-900/20 border-nexus-400' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="mb-2 p-4 border-2 border-dashed border-nexus-400 rounded-xl text-center text-nexus-600 dark:text-nexus-400 text-sm">
+          Suelta los archivos aqui
+        </div>
+      )}
+
+      {/* Reply preview */}
+      {replyTo && (
+        <div className="mb-2 p-2 bg-nexus-50 dark:bg-nexus-900/30 rounded-xl border-l-4 border-nexus-500 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-nexus-700 dark:text-nexus-300">{replyTo.sender}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{replyTo.content}</p>
+          </div>
+          <button onClick={onCancelReply} className="p-1 text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* File previews */}
+      {pendingFiles.length > 0 && (
+        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+          {pendingFiles.map((pf, i) => (
+            <div key={i} className="relative flex-shrink-0">
+              {pf.previewUrl ? (
+                <img src={pf.previewUrl} alt="Preview" className="h-20 rounded-lg object-cover" />
+              ) : (
+                <div className="h-20 w-32 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{pf.file.name}</p>
+                    <p className="text-[10px] text-gray-400">{formatFileSize(pf.file.size)}</p>
+                  </div>
+                </div>
+              )}
               <button
-                onClick={clearFile}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                onClick={() => removeFile(i)}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow"
               >
                 <X className="w-3 h-3" />
               </button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Paperclip className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-700 flex-1 truncate">{selectedFile.name}</span>
-              <span className="text-xs text-gray-400">{formatFileSize(selectedFile.size)}</span>
-              <button onClick={clearFile} className="p-1 text-gray-400 hover:text-red-500 rounded">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          ))}
         </div>
       )}
 
       <div className="flex items-end gap-2">
-        {/* File upload */}
         <div className="flex gap-1 flex-shrink-0">
           <button
             onClick={() => imageInputRef.current?.click()}
             disabled={isUploading}
-            className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors"
+            className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-nexus-600 dark:hover:text-nexus-400 hover:bg-nexus-50 dark:hover:bg-nexus-900/30 rounded-xl transition-colors"
           >
             <ImageIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors"
+            className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-nexus-600 dark:hover:text-nexus-400 hover:bg-nexus-50 dark:hover:bg-nexus-900/30 rounded-xl transition-colors"
           >
             <Paperclip className="w-5 h-5" />
           </button>
         </div>
-        <input
-          ref={imageInputRef}
-          type="file"
-          onChange={handleFileSelect}
-          className="hidden"
-          accept="image/*"
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        <input ref={imageInputRef} type="file" onChange={handleFileSelect} className="hidden" accept="image/*" multiple />
+        <input ref={fileInputRef} type="file" onChange={handleFileSelect} className="hidden" multiple />
 
-        {/* Text input */}
-        <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 flex items-end">
+        <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-2 flex items-end">
           <textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => handleTextChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={`Escribir mensaje a ${conversationName}...`}
-            className="flex-1 bg-transparent resize-none outline-none text-sm text-gray-900 placeholder-gray-500 max-h-[150px]"
+            className="flex-1 bg-transparent resize-none outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 max-h-[150px]"
             rows={1}
           />
         </div>
 
-        {/* Send button */}
-        {text.trim() || selectedFile ? (
+        <div className="relative flex-shrink-0">
+          <button
+            onClick={() => setShowEmoji(!showEmoji)}
+            className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-nexus-600 dark:hover:text-nexus-400 hover:bg-nexus-50 dark:hover:bg-nexus-900/30 rounded-xl transition-colors"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          {showEmoji && (
+            <EmojiPicker
+              onSelect={(emoji) => setText((prev) => prev + emoji)}
+              onClose={() => setShowEmoji(false)}
+            />
+          )}
+        </div>
+
+        {text.trim() || pendingFiles.length > 0 ? (
           <button
             onClick={handleSend}
             disabled={isUploading}
@@ -185,11 +261,11 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
             {isUploading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <ArrowUp className="w-5 h-5" />
             )}
           </button>
         ) : (
-          <button className="p-2.5 text-gray-500 hover:text-nexus-600 hover:bg-nexus-50 rounded-xl transition-colors flex-shrink-0">
+          <button className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-nexus-600 dark:hover:text-nexus-400 hover:bg-nexus-50 dark:hover:bg-nexus-900/30 rounded-xl transition-colors flex-shrink-0">
             <Mic className="w-5 h-5" />
           </button>
         )}

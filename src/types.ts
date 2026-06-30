@@ -15,6 +15,7 @@ export interface User {
   role: 'admin' | 'oficial' | 'agente';
   avatar_url: string | null;
   public_key: string | null;
+  status: string;
   created_at: string;
   last_seen: string;
   is_online: number;
@@ -36,6 +37,9 @@ export interface Participant {
   user_id: number;
   role: 'admin' | 'member';
   notifications: number;
+  is_muted: number;
+  is_archived: number;
+  is_pinned: number;
   joined_at: string;
 }
 
@@ -51,6 +55,8 @@ export interface Message {
   reply_to: number | null;
   is_edited: number;
   is_deleted: number;
+  is_pinned: number;
+  forwarded_from: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,7 +69,7 @@ export interface JWTPayload {
 }
 
 export interface WebSocketMessage {
-  type: 'message' | 'typing' | 'read' | 'online' | 'join' | 'leave';
+  type: 'message' | 'typing' | 'read' | 'online' | 'join' | 'leave' | 'edit' | 'delete' | 'reaction' | 'rename' | 'pin';
   payload: any;
   conversation_id: number;
   user_id: number;
