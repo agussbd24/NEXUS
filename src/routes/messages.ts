@@ -361,9 +361,9 @@ messages.get('/:conversationId/search', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT m.*, u.nombre as sender_nombre, u.apellido as sender_apellido
     FROM messages m JOIN users u ON m.sender_id = u.id
-    WHERE m.conversation_id = ? AND m.content LIKE ? AND m.is_deleted = 0
+    WHERE m.conversation_id = ? AND (m.content LIKE ? OR m.file_name LIKE ?) AND m.is_deleted = 0
     ORDER BY m.created_at DESC LIMIT 50
-  `).bind(convoId, `%${q}%`).all();
+  `).bind(convoId, `%${q}%`, `%${q}%`).all();
 
   return jsonResponse({ messages: results });
 });
