@@ -1,6 +1,6 @@
-import { RefObject } from 'react';
+import { RefObject, useState } from 'react';
 import UserAvatar from './UserAvatar';
-import { FileText, Download, Image as ImageIcon } from 'lucide-react';
+import { FileText, Download, X, ExternalLink } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -24,6 +24,140 @@ interface MessageListProps {
   messagesEndRef: RefObject<HTMLDivElement>;
 }
 
+function getFileCategory(name: string | null): string {
+  if (!name) return 'other';
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) return 'image';
+  if (['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext)) return 'video';
+  if (['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'].includes(ext)) return 'audio';
+  if (ext === 'pdf') return 'pdf';
+  if (['txt', 'md', 'json', 'csv', 'log'].includes(ext)) return 'text';
+  if (['doc', 'docx'].includes(ext)) return 'doc';
+  if (['xls', 'xlsx'].includes(ext)) return 'xls';
+  if (['ppt', 'pptx'].includes(ext)) return 'ppt';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
+  return 'other';
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
+  const [showModal, setShowModal] = useState(false);
+  const category = getFileCategory(msg.file_name);
+  const url = msg.file_url || '';
+
+  const badge = (label: string, color: string) => (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${color}`}>{label}</span>
+  );
+
+  const preview = () => {
+    switch (category) {
+      case 'image':
+        return (
+          <div className="cursor-pointer" onClick={() => setShowModal(true)}>
+            <img src={url} alt={msg.file_name || ''} className="max-w-[300px] max-h-[350px] rounded-lg object-cover" loading="lazy" />
+          </div>
+        );
+      case 'video':
+        return (
+          <video controls className="max-w-[300px] max-h-[350px] rounded-lg">
+            <source src={url} />
+          </video>
+        );
+      case 'audio':
+        return (
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div className="flex-1">
+              <p className="text-sm font-medium truncate">{msg.file_name}</p>
+              <audio controls className="w-full mt-1" style={{ height: 36 }}>
+                <source src={url} />
+              </audio>
+            </div>
+          </div>
+        );
+      case 'pdf':
+        return (
+          <div className="cursor-pointer" onClick={() => setShowModal(true)}>
+            <div className="flex items-center gap-2 mb-2">
+              {badge('PDF', 'bg-red-100 text-red-700')}
+              <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
+            </div>
+            <div className="w-full h-[300px] border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <iframe src={url} className="w-full h-full" title={msg.file_name || 'PDF'} />
+            </div>
+          </div>
+        );
+      case 'text':
+        return (
+          <div className="cursor-pointer" onClick={() => setShowModal(true)}>
+            <div className="flex items-center gap-2 mb-1">
+              {badge('TXT', 'bg-gray-100 text-gray-700')}
+              <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
+            </div>
+            <div className="max-h-[200px] overflow-auto bg-gray-50 rounded-lg border border-gray-200 p-2">
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">{msg.file_name}</pre>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div className={`p-3 rounded-xl ${isMe ? 'bg-nexus-700' : 'bg-gray-100'}`}>
+              <FileText className={`w-6 h-6 ${isMe ? 'text-nexus-200' : 'text-gray-500'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{msg.file_name || 'Archivo'}</p>
+              <p className={`text-xs ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
+                {msg.file_size ? formatFileSize(msg.file_size) : ''}
+              </p>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <>
+      <div>
+        {preview()}
+        <div className="flex items-center gap-2 mt-1.5">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`text-xs flex items-center gap-1 ${isMe ? 'text-nexus-200 hover:text-white' : 'text-nexus-600 hover:text-nexus-800'}`}
+          >
+            <ExternalLink className="w-3 h-3" /> Abrir
+          </a>
+          <a
+            href={url}
+            download={msg.file_name}
+            className={`text-xs flex items-center gap-1 ${isMe ? 'text-nexus-200 hover:text-white' : 'text-nexus-600 hover:text-nexus-800'}`}
+          >
+            <Download className="w-3 h-3" /> Descargar
+          </a>
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+          <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+            <X className="w-8 h-8" />
+          </button>
+          <div className="max-w-5xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
+            {category === 'image' && <img src={url} alt={msg.file_name || ''} className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain" />}
+            {category === 'pdf' && <iframe src={url} className="w-full h-[85vh] rounded-lg bg-white" title={msg.file_name || 'PDF'} />}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function MessageList({ messages, currentUserId, messagesEndRef }: MessageListProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -44,18 +178,6 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
         minute: '2-digit',
       });
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const isImageFile = (name: string | null) => {
-    if (!name) return false;
-    const ext = name.split('.').pop()?.toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
   };
 
   const groupedMessages: { date: string; messages: Message[] }[] = [];
@@ -103,6 +225,9 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
               );
             }
 
+            const hasFile = msg.content_type === 'file' && msg.file_url;
+            const isMedia = hasFile && ['image', 'video', 'audio', 'pdf'].includes(getFileCategory(msg.file_name));
+
             return (
               <div
                 key={msg.id}
@@ -125,47 +250,14 @@ export default function MessageList({ messages, currentUserId, messagesEndRef }:
                   )}
 
                   <div
-                    className={`px-4 py-2 rounded-2xl ${
+                    className={`rounded-2xl overflow-hidden ${
                       isMe
                         ? 'bg-nexus-600 text-white rounded-br-md'
                         : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md shadow-sm'
-                    }`}
+                    } ${isMedia ? 'p-1' : 'px-4 py-2'}`}
                   >
-                    {msg.content_type === 'file' && msg.file_url ? (
-                      <div>
-                        {isImageFile(msg.file_name) ? (
-                          <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="block">
-                            <img
-                              src={msg.file_url}
-                              alt={msg.file_name || 'Imagen'}
-                              className="max-w-[280px] max-h-[300px] rounded-lg object-cover"
-                              loading="lazy"
-                            />
-                            <p className="text-xs mt-1 opacity-75">{msg.file_name}</p>
-                          </a>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg ${isMe ? 'bg-nexus-700' : 'bg-gray-100'}`}>
-                              <FileText className={`w-5 h-5 ${isMe ? 'text-nexus-200' : 'text-gray-500'}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{msg.file_name || 'Archivo'}</p>
-                              {msg.file_size && (
-                                <p className={`text-xs ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
-                                  {formatFileSize(msg.file_size)}
-                                </p>
-                              )}
-                            </div>
-                            <a
-                              href={msg.file_url}
-                              download
-                              className={`p-1.5 rounded-lg ${isMe ? 'bg-nexus-700 hover:bg-nexus-800' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
-                            >
-                              <Download className={`w-4 h-4 ${isMe ? 'text-white' : 'text-gray-600'}`} />
-                            </a>
-                          </div>
-                        )}
-                      </div>
+                    {hasFile ? (
+                      <FilePreview msg={msg} isMe={isMe} />
                     ) : (
                       <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                     )}

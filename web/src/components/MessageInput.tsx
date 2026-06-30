@@ -76,8 +76,8 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 100 * 1024 * 1024) {
-        toast.error('El archivo no puede superar 100MB');
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error('El archivo no puede superar 25MB');
         return;
       }
       setSelectedFile(file);
@@ -160,7 +160,6 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
           type="file"
           onChange={handleFileSelect}
           className="hidden"
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4"
         />
 
         {/* Text input */}
