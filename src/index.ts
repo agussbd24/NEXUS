@@ -7,34 +7,25 @@ import messages from './routes/messages';
 import files from './routes/files';
 import type { Env } from './types';
 
-const app = new Hono<{ Bindings: Env }>();
+const api = new Hono<{ Bindings: Env }>();
 
-// CORS middleware
-app.use('*', async (c, next) => {
+// CORS middleware for API
+api.use('*', async (c, next) => {
   if (c.req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders() });
   }
   await next();
 });
 
-// Health check
-app.get('/', (c) => {
-  return jsonResponse({
-    name: 'NEXUS API',
-    version: '1.0.0',
-    status: 'running',
-  });
-});
-
 // API Routes
-app.route('/api/auth', auth);
-app.route('/api/users', users);
-app.route('/api/conversations', conversations);
-app.route('/api/messages', messages);
-app.route('/api/files', files);
+api.route('/auth', auth);
+api.route('/users', users);
+api.route('/conversations', conversations);
+api.route('/messages', messages);
+api.route('/files', files);
 
 // Durable Object WebSocket proxy
-app.get('/ws/chat/:conversationId', async (c) => {
+api.get('/ws/chat/:conversationId', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     return errorResponse('Token requerido', 401);
@@ -45,7 +36,7 @@ app.get('/ws/chat/:conversationId', async (c) => {
   const payload = await verifyJWT(token, c.env.JWT_SECRET);
 
   if (!payload) {
-    return errorResponse('Token inválido', 401);
+    return errorResponse('Token invalido', 401);
   }
 
   const conversationId = c.req.param('conversationId');
@@ -65,9 +56,70 @@ app.get('/ws/chat/:conversationId', async (c) => {
   }));
 });
 
-// 404 handler
+const app = new Hono<{ Bindings: Env }>();
+
+// API routes go first
+app.route('/api', api);
+
+// WebSocket route (needs to be before static assets)
+app.get('/ws/:path*', async (c) => {
+  const authHeader = c.req.header('Authorization') || new URL(c.req.url).searchParams.get('token');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+
+  if (!token) {
+    return errorResponse('Token requerido', 401);
+  }
+
+  const { verifyJWT } = await import('./lib/jwt');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+
+  if (!payload) {
+    return errorResponse('Token invalido', 401);
+  }
+
+  const pathParts = c.req.url.split('/');
+  const conversationIdIndex = pathParts.findIndex(p => p === 'chat') + 1;
+  const conversationId = pathParts[conversationIdIndex]?.split('?')[0];
+
+  if (!conversationId) {
+    return errorResponse('Conversation ID requerido', 400);
+  }
+
+  const userId = payload.sub;
+
+  const doId = c.env.CHAT_ROOM.idFromName(`chat:${conversationId}`);
+  const stub = c.env.CHAT_ROOM.get(doId);
+
+  const url = new URL(c.req.url);
+  url.searchParams.set('conversationId', conversationId);
+  url.searchParams.set('userId', String(userId));
+
+  return stub.fetch(new Request(url.toString(), {
+    headers: c.req.raw.headers,
+  }));
+});
+
+// Static assets (frontend)
+app.get('*', async (c) => {
+  // @ts-ignore
+  const assets = c.env.ASSETS;
+  if (assets) {
+    return assets.fetch(c.req.raw);
+  }
+  return c.notFound();
+});
+
+// Fallback
 app.notFound((c) => {
-  return errorResponse('Endpoint no encontrado', 404);
+  // Try to serve index.html for SPA routing
+  // @ts-ignore
+  const assets = c.env.ASSETS;
+  if (assets) {
+    const url = new URL(c.req.url);
+    url.pathname = '/';
+    return assets.fetch(new Request(url.toString()));
+  }
+  return errorResponse('Not found', 404);
 });
 
 // Error handler
