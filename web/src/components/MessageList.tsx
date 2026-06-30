@@ -46,6 +46,7 @@ interface MessageListProps {
   onReact?: (messageId: number, emoji: string) => void;
   onPin?: (messageId: number) => void;
   replyToMessage?: Message | null;
+  highlightMessageId?: number | null;
 }
 
 function getFileCategory(name: string | null): string {
@@ -182,7 +183,7 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
   );
 }
 
-export default function MessageList({ messages, currentUserId, messagesEndRef, onReply, onEdit, onDelete, onReact, onPin, replyToMessage }: MessageListProps) {
+export default function MessageList({ messages, currentUserId, messagesEndRef, onReply, onEdit, onDelete, onReact, onPin, replyToMessage, highlightMessageId }: MessageListProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: Message } | null>(null);
   const [showReactPicker, setShowReactPicker] = useState<number | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -351,7 +352,8 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
             return (
               <div
                 key={msg.id}
-                className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 message-enter`}
+                id={`msg-${msg.id}`}
+                className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 message-enter ${highlightMessageId === msg.id ? 'message-highlight' : ''}`}
                 onContextMenu={(e) => handleContextMenu(e, msg)}
                 onTouchStart={(e) => handleTouchStart(e, msg)}
               >

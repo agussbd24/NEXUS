@@ -145,3 +145,24 @@ html, body {
 .z-\[100\] {
   animation: contextMenuIn 0.1s ease-out;
 }
+
+/* Message highlight animation (search result) */
+.message-highlight {
+  animation: highlightPulse 3s ease-out;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+    border-radius: 1rem;
+  }
+  70% {
+    background-color: rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}

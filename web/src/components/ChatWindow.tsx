@@ -21,6 +21,7 @@ export default function ChatWindow() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [externalFiles, setExternalFiles] = useState<File[] | null>(null);
+  const [highlightMessageId, setHighlightMessageId] = useState<number | null>(null);
   const dragCounterRef = useRef(0);
 
   const user = useAuthStore((s) => s.user);
@@ -226,6 +227,20 @@ export default function ChatWindow() {
 
   const handleReact = (messageId: number, emoji: string) => {};
 
+  const scrollToMessage = (messageId: number) => {
+    setHighlightMessageId(messageId);
+    setTimeout(() => setHighlightMessageId(null), 3000);
+
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      if (!messages.find((m) => m.id === messageId)) {
+        toast('Cargando mensaje...', { icon: '🔍' });
+      }
+    }
+  };
+
   const handlePinMessage = async (messageId: number) => {
     const msg = messages.find((m) => m.id === messageId);
     if (!msg || !currentConversation) return;
@@ -336,13 +351,23 @@ export default function ChatWindow() {
 
       {/* Search results */}
       {searchResults.length > 0 && (
-        <div className="px-3 py-2 bg-nexus-50 dark:bg-nexus-900/20 border-b border-nexus-200 dark:border-nexus-800 max-h-48 overflow-y-auto">
+        <div className="px-3 py-2 bg-nexus-50 dark:bg-nexus-900/20 border-b border-nexus-200 dark:border-nexus-800 max-h-60 overflow-y-auto">
           <p className="text-xs text-nexus-600 dark:text-nexus-400 font-medium mb-1">{searchResults.length} resultado(s)</p>
           {searchResults.map((msg) => (
-            <div key={msg.id} className="py-1 text-xs">
-              <span className="font-medium text-gray-700 dark:text-gray-300">{msg.sender_nombre}:</span>
-              <span className="text-gray-500 dark:text-gray-400 ml-1">{msg.content}</span>
-            </div>
+            <button
+              key={msg.id}
+              onClick={() => { scrollToMessage(msg.id); setSearchResults([]); setSearchQuery(''); setShowSearch(false); }}
+              className="w-full text-left py-2 px-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-start gap-2 group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs font-semibold text-nexus-700 dark:text-nexus-300">{msg.sender_nombre} {msg.sender_apellido}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(msg.created_at).toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{msg.content}</p>
+              </div>
+              <span className="text-xs text-nexus-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">Ir →</span>
+            </button>
           ))}
         </div>
       )}
@@ -375,6 +400,7 @@ export default function ChatWindow() {
           onReact={handleReact}
           onPin={handlePinMessage}
           replyToMessage={null}
+          highlightMessageId={highlightMessageId}
         />
         <ScrollToBottom show={!isAtBottom} onClick={scrollToBottom} unreadCount={unreadCount} />
       </div>
