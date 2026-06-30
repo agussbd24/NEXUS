@@ -1,0 +1,33 @@
+name = "nexus-backend"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "nexus-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# R2 Bucket for files
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "nexus-files"
+
+# KV for sessions/cache
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Durable Objects for real-time chat
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+# JWT Secret (set via: wrangler secret put JWT_SECRET)
+# [vars]
+# ENVIRONMENT = "production"
