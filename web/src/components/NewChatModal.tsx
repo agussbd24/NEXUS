@@ -97,42 +97,42 @@ export default function NewChatModal({ onClose }: NewChatModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Nueva conversacion</h2>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md shadow-premium-xl overflow-hidden border border-gray-200/60 dark:border-gray-800/60">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200/40 dark:border-gray-800/40">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Nueva conversacion</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200/40 dark:border-gray-800/40">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre o DNI..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100/80 dark:bg-gray-800/80 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500/30 dark:text-white placeholder-gray-400 transition-all"
               autoFocus
             />
           </div>
         </div>
 
         {selectedUsers.length > 0 && (
-          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <div className="px-4 py-3 border-b border-gray-200/40 dark:border-gray-800/40 bg-nexus-50/30 dark:bg-nexus-900/10">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">
               Seleccionados ({selectedUsers.length})
             </p>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {selectedUsers.map((userId) => {
                 const user = users.find((u) => u.id === userId);
                 if (!user) return null;
                 return (
-                  <span key={userId} className="inline-flex items-center gap-1 px-2 py-1 bg-nexus-100 dark:bg-nexus-900/30 text-nexus-700 dark:text-nexus-300 rounded-full text-xs">
+                  <span key={userId} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-nexus-100 dark:bg-nexus-900/40 text-nexus-700 dark:text-nexus-300 rounded-full text-xs font-medium">
                     {user.nombre} {user.apellido}
-                    <button onClick={() => toggleUser(userId)} className="hover:text-nexus-900 dark:hover:text-nexus-100">
+                    <button onClick={() => toggleUser(userId)} className="hover:text-nexus-900 dark:hover:text-nexus-100 transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -145,7 +145,7 @@ export default function NewChatModal({ onClose }: NewChatModalProps) {
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="Nombre del grupo (opcional)"
-                className="w-full mt-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 dark:text-white"
+                className="w-full mt-2.5 px-4 py-2.5 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500/30 dark:text-white placeholder-gray-400 transition-all"
               />
             )}
           </div>
@@ -153,13 +153,13 @@ export default function NewChatModal({ onClose }: NewChatModalProps) {
 
         <div className="max-h-80 overflow-y-auto">
           {loading ? (
-            <div className="p-8 text-center">
+            <div className="p-12 text-center">
               <Loader2 className="w-6 h-6 text-nexus-500 animate-spin mx-auto" />
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Cargando usuarios...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Cargando usuarios...</p>
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 dark:text-gray-500">
-              <Users className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+            <div className="p-12 text-center text-gray-400 dark:text-gray-500">
+              <Users className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               <p className="text-sm">No se encontraron usuarios</p>
             </div>
           ) : (
@@ -167,7 +167,7 @@ export default function NewChatModal({ onClose }: NewChatModalProps) {
               <button
                 key={user.id}
                 onClick={() => toggleUser(user.id)}
-                className={`w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                className={`w-full p-3.5 flex items-center gap-3 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-all ${
                   selectedUsers.includes(user.id) ? 'bg-nexus-50 dark:bg-nexus-900/20' : ''
                 }`}
               >
@@ -188,11 +188,11 @@ export default function NewChatModal({ onClose }: NewChatModalProps) {
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="p-4 border-t border-gray-200/40 dark:border-gray-800/40 bg-gray-50/50 dark:bg-gray-900/50">
           <button
             onClick={handleCreate}
             disabled={selectedUsers.length === 0 || creating}
-            className="w-full py-2.5 bg-nexus-600 hover:bg-nexus-500 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-nexus-600 to-nexus-500 hover:from-nexus-500 hover:to-nexus-400 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 btn-premium shadow-glow"
           >
             {creating ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Creando...</>

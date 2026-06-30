@@ -29,8 +29,8 @@ export default function Chat() {
 
   if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-        <Loader2 className="w-8 h-8 text-nexus-600 animate-spin" />
+      <div className="h-screen flex items-center justify-center bg-[#0f0f23]">
+        <Loader2 className="w-8 h-8 text-nexus-400 animate-spin" />
       </div>
     );
   }
@@ -39,7 +39,7 @@ export default function Chat() {
   const showChat = !isMobile || currentConversation;
 
   return (
-    <div className="h-screen flex bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <div className="h-screen flex bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {showSidebar && <Sidebar />}
       {showChat && <ChatWindow />}
     </div>

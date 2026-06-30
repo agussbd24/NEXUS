@@ -254,14 +254,14 @@ export default function ChatWindow() {
 
   if (!currentConversation) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-nexus-100 dark:bg-nexus-900/30 rounded-full mb-4">
-            <Shield className="w-12 h-12 text-nexus-400 dark:text-nexus-500" />
+      <div className="flex-1 hidden sm:flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/50">
+        <div className="text-center animate-fade-in">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-nexus-100 to-nexus-200 dark:from-nexus-900/30 dark:to-nexus-800/30 rounded-3xl mb-6 shadow-inner-glow">
+            <Shield className="w-12 h-12 text-nexus-400 dark:text-nexus-500" strokeWidth={1.5} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">NEXUS</h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-            Seleccione una conversacion o cree una nueva para comenzar a comunicarse
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Bienvenido a NEXUS</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm text-sm">
+            Selecciona una conversacion o crea una nueva para comenzar
           </p>
         </div>
       </div>
@@ -278,15 +278,15 @@ export default function ChatWindow() {
     >
       {isDragOver && (
         <div className="absolute inset-0 z-50 bg-nexus-500/10 dark:bg-nexus-400/10 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-nexus-500 p-12 text-center">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-premium-xl border-2 border-dashed border-nexus-500 p-12 text-center animate-scale-in">
             <div className="text-5xl mb-4">📎</div>
-            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">Suelta los archivos aqui</p>
+            <p className="text-lg font-bold text-gray-800 dark:text-gray-200">Suelta los archivos aqui</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Se enviaran automaticamente</p>
           </div>
         </div>
       )}
       {/* Header */}
-      <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/40 dark:border-gray-800/40 shadow-sm">
         <button
           onClick={() => setCurrentConversation(null)}
           className="lg:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -330,20 +330,20 @@ export default function ChatWindow() {
 
       {/* Search bar */}
       {showSearch && (
-        <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+        <div className="px-3 py-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-b border-gray-200/40 dark:border-gray-800/40 flex gap-2 animate-slide-down">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Buscar en conversacion..."
-            className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm outline-none dark:text-white"
+            className="flex-1 px-3 py-2 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl text-sm outline-none dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-nexus-500/30 transition-all"
             autoFocus
           />
-          <button onClick={handleSearch} disabled={searching} className="px-3 py-1.5 bg-nexus-600 text-white text-sm rounded-xl">
+          <button onClick={handleSearch} disabled={searching} className="px-4 py-2 bg-gradient-to-r from-nexus-600 to-nexus-500 text-white text-sm font-medium rounded-xl transition-all btn-premium">
             {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
           </button>
-          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} className="p-1.5 text-gray-400 hover:text-gray-600">
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -351,13 +351,13 @@ export default function ChatWindow() {
 
       {/* Search results */}
       {searchResults.length > 0 && (
-        <div className="px-3 py-2 bg-nexus-50 dark:bg-nexus-900/20 border-b border-nexus-200 dark:border-nexus-800 max-h-60 overflow-y-auto">
-          <p className="text-xs text-nexus-600 dark:text-nexus-400 font-medium mb-1">{searchResults.length} resultado(s)</p>
+        <div className="px-3 py-2 bg-nexus-50/80 dark:bg-nexus-900/20 backdrop-blur-xl border-b border-nexus-200/40 dark:border-nexus-800/40 max-h-60 overflow-y-auto">
+          <p className="text-xs text-nexus-600 dark:text-nexus-400 font-semibold mb-1">{searchResults.length} resultado(s)</p>
           {searchResults.map((msg) => (
             <button
               key={msg.id}
               onClick={() => { scrollToMessage(msg.id); setSearchResults([]); setSearchQuery(''); setShowSearch(false); }}
-              className="w-full text-left py-2 px-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-start gap-2 group"
+              className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all flex items-start gap-2 group"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
@@ -470,7 +470,7 @@ function ConversationInfo({ conversation, currentUserId, token, onClose, onRenam
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/40 dark:border-gray-800/40 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Info de conversacion</h3>
         <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

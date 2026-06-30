@@ -111,16 +111,16 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="w-full sm:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+      <div className="w-full sm:w-80 bg-white dark:bg-gray-900 border-r border-gray-200/60 dark:border-gray-800/60 flex flex-col h-full">
         {/* Header */}
-        <div className="p-4 bg-nexus-600 text-white">
+        <div className="p-4 bg-gradient-to-br from-nexus-600 via-nexus-600 to-nexus-700 text-white">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-white/20 rounded-xl">
+            <div className="p-2 bg-white/15 rounded-xl backdrop-blur-sm">
               <Shield className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <h1 className="text-lg font-bold">NEXUS</h1>
-              <p className="text-xs text-nexus-200">Mensajeria Institucional</p>
+              <h1 className="text-lg font-bold tracking-tight">NEXUS</h1>
+              <p className="text-xs text-nexus-200/80">Mensajeria Institucional</p>
             </div>
             <button onClick={toggleTheme} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -134,16 +134,16 @@ export default function Sidebar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar conversaciones..."
-              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-nexus-300 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+              className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/15 rounded-xl text-white placeholder-nexus-300 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
             />
           </div>
         </div>
 
         {/* Actions */}
-        <div className="p-2 border-b border-gray-100 dark:border-gray-700 flex gap-2">
+        <div className="p-2 border-b border-gray-200/60 dark:border-gray-800/60 flex gap-2">
           <button
             onClick={() => setShowNewChat(true)}
-            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-nexus-50 hover:bg-nexus-100 dark:bg-nexus-900/30 dark:hover:bg-nexus-900/50 text-nexus-700 dark:text-nexus-300 rounded-xl transition-colors font-medium text-sm"
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-2.5 bg-nexus-50 hover:bg-nexus-100 dark:bg-nexus-900/30 dark:hover:bg-nexus-900/50 text-nexus-700 dark:text-nexus-300 rounded-xl transition-all font-medium text-sm"
           >
             <Plus className="w-4 h-4" /> Nueva
           </button>
@@ -173,8 +173,8 @@ export default function Sidebar() {
             filteredConversations.map((convo) => (
               <div
                 key={convo.id}
-                className={`relative flex items-center border-b border-gray-50 dark:border-gray-700/50 ${
-                  currentConversation?.id === convo.id ? 'bg-nexus-50 dark:bg-nexus-900/20 border-l-4 border-l-nexus-500' : ''
+                className={`relative flex items-center border-b border-gray-100/60 dark:border-gray-800/60 transition-colors ${
+                  currentConversation?.id === convo.id ? 'bg-nexus-50 dark:bg-nexus-900/20 border-l-4 border-l-nexus-500' : 'hover:bg-gray-50/80 dark:hover:bg-gray-800/50'
                 }`}
               >
                 <button
@@ -226,7 +226,7 @@ export default function Sidebar() {
                   </button>
 
                   {menuConvoId === convo.id && (
-                    <div className="absolute right-2 top-12 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px] animate-in">
+                    <div className="absolute right-2 top-12 z-50 bg-white dark:bg-gray-900 rounded-2xl shadow-premium-lg border border-gray-200/60 dark:border-gray-800/60 py-1.5 min-w-[200px] animate-scale-in">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleMenuAction('pin', convo); }}
                         className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -281,7 +281,7 @@ export default function Sidebar() {
         </div>
 
         {/* User Info */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="p-3 border-t border-gray-200/60 dark:border-gray-800/60 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <UserAvatar name={`${user?.nombre} ${user?.apellido}`} isOnline={true} size="sm" />
             <div className="flex-1 min-w-0">

@@ -74,29 +74,29 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
   const url = msg.file_url || '';
 
   const badge = (label: string, color: string) => (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${color}`}>{label}</span>
+    <span className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold ${color}`}>{label}</span>
   );
 
   const preview = () => {
     switch (category) {
       case 'image':
         return (
-          <div className="cursor-pointer" onClick={() => setShowModal(true)}>
-            <img src={url} alt={msg.file_name || ''} className="max-w-[300px] max-h-[350px] rounded-lg object-cover" loading="lazy" />
+          <div className="cursor-pointer group/img" onClick={() => setShowModal(true)}>
+            <img src={url} alt={msg.file_name || ''} className="max-w-[300px] max-h-[350px] rounded-xl object-cover shadow-sm transition-transform group-hover/img:scale-[1.02]" loading="lazy" />
           </div>
         );
       case 'video':
         return (
-          <video controls className="max-w-[300px] max-h-[350px] rounded-lg">
+          <video controls className="max-w-[300px] max-h-[350px] rounded-xl shadow-sm">
             <source src={url} />
           </video>
         );
       case 'audio':
         return (
-          <div className="flex items-center gap-3 min-w-[200px]">
+          <div className="flex items-center gap-3 min-w-[220px] p-1">
             <div className="flex-1">
-              <p className="text-sm font-medium truncate">{msg.file_name}</p>
-              <audio controls className="w-full mt-1" style={{ height: 36 }}>
+              <p className="text-sm font-semibold truncate">{msg.file_name}</p>
+              <audio controls className="w-full mt-2" style={{ height: 36 }}>
                 <source src={url} />
               </audio>
             </div>
@@ -109,7 +109,7 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
               {badge('PDF', 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}
               <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
             </div>
-            <div className="w-full h-[300px] border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+            <div className="w-full h-[300px] border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
               <object data={url} type="application/pdf" className="w-full h-full">
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">No se puede previsualizar</div>
               </object>
@@ -123,20 +123,20 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
               {badge('TXT', 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300')}
               <span className="text-xs text-gray-500">{msg.file_size ? formatFileSize(msg.file_size) : ''}</span>
             </div>
-            <div className="max-h-[200px] overflow-auto bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2">
+            <div className="max-h-[200px] overflow-auto bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 p-3">
               <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">{msg.file_name}</pre>
             </div>
           </div>
         );
       default:
         return (
-          <div className="flex items-center gap-3 min-w-[200px]">
-            <div className={`p-3 rounded-xl ${isMe ? 'bg-nexus-700' : 'bg-gray-100 dark:bg-gray-700'}`}>
-              <FileText className={`w-6 h-6 ${isMe ? 'text-nexus-200' : 'text-gray-500 dark:text-gray-400'}`} />
+          <div className="flex items-center gap-3 min-w-[220px] p-1">
+            <div className={`p-3 rounded-xl ${isMe ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-700'}`}>
+              <FileText className={`w-6 h-6 ${isMe ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{msg.file_name || 'Archivo'}</p>
-              <p className={`text-xs ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
+              <p className="text-sm font-semibold truncate">{msg.file_name || 'Archivo'}</p>
+              <p className={`text-xs ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
                 {msg.file_size ? formatFileSize(msg.file_size) : ''}
               </p>
             </div>
@@ -149,19 +149,19 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
     <>
       <div>
         {preview()}
-        <div className="flex items-center gap-2 mt-1.5">
+        <div className="flex items-center gap-3 mt-2">
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-xs flex items-center gap-1 ${isMe ? 'text-nexus-200 hover:text-white' : 'text-nexus-600 dark:text-nexus-400 hover:text-nexus-800'}`}
+            className={`text-xs flex items-center gap-1 font-medium ${isMe ? 'text-white/80 hover:text-white' : 'text-nexus-600 dark:text-nexus-400 hover:text-nexus-800'}`}
           >
             <ExternalLink className="w-3 h-3" /> Abrir
           </a>
           <a
             href={url}
             download={msg.file_name}
-            className={`text-xs flex items-center gap-1 ${isMe ? 'text-nexus-200 hover:text-white' : 'text-nexus-600 dark:text-nexus-400 hover:text-nexus-800'}`}
+            className={`text-xs flex items-center gap-1 font-medium ${isMe ? 'text-white/80 hover:text-white' : 'text-nexus-600 dark:text-nexus-400 hover:text-nexus-800'}`}
           >
             <Download className="w-3 h-3" /> Descargar
           </a>
@@ -169,13 +169,13 @@ function FilePreview({ msg, isMe }: { msg: Message; isMe: boolean }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
-            <X className="w-8 h-8" />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+          <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 p-2 hover:bg-white/10 rounded-xl transition-colors">
+            <X className="w-6 h-6" />
           </button>
-          <div className="max-w-5xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
-            {category === 'image' && <img src={url} alt={msg.file_name || ''} className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain" />}
-            {category === 'pdf' && <object data={url} type="application/pdf" className="w-full h-[85vh] rounded-lg bg-white" />}
+          <div className="max-w-5xl max-h-[90vh] w-full animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            {category === 'image' && <img src={url} alt={msg.file_name || ''} className="max-w-full max-h-[85vh] mx-auto rounded-2xl object-contain shadow-2xl" />}
+            {category === 'pdf' && <object data={url} type="application/pdf" className="w-full h-[85vh] rounded-2xl bg-white shadow-2xl" />}
           </div>
         </div>
       )}
@@ -264,7 +264,7 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
     const convoId = messages.find((m) => m.id === messageId)?.conversation_id;
     if (!convoId) return;
     try {
-      const data = await api(`/messages/${convoId}/reactions`, {
+      await api(`/messages/${convoId}/reactions`, {
         method: 'POST',
         token,
         body: { message_id: messageId, emoji },
@@ -296,8 +296,8 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
     const replyMsg = messages.find((m) => m.id === replyToId);
     if (!replyMsg) return null;
     return (
-      <div className={`text-xs mb-1 pl-2 border-l-2 ${replyMsg.sender_id === currentUserId ? 'border-nexus-300 text-nexus-200' : 'border-nexus-400 text-gray-500 dark:text-gray-400'}`}>
-        <span className="font-medium">{replyMsg.sender_nombre} {replyMsg.sender_apellido}</span>
+      <div className={`text-xs mb-1.5 pl-2.5 border-l-2 ${replyMsg.sender_id === currentUserId ? 'border-white/40 text-white/70' : 'border-nexus-400 text-gray-500 dark:text-gray-400'}`}>
+        <span className="font-semibold">{replyMsg.sender_nombre} {replyMsg.sender_apellido}</span>
         <p className="truncate max-w-[250px]">{replyMsg.content || replyMsg.file_name || 'Archivo'}</p>
       </div>
     );
@@ -316,16 +316,28 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEiIGZpbGw9IiNlNWU3ZWIiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=')] bg-gray-50 dark:bg-gray-900">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/50">
+      {/* Subtle dot pattern */}
+      <div className="fixed inset-0 opacity-[0.015] dark:opacity-[0.03] pointer-events-none" style={{
+        backgroundImage: `radial-gradient(circle, #6366f1 1px, transparent 1px)`,
+        backgroundSize: '24px 24px'
+      }} />
+
       {groupedMessages.length === 0 && (
-        <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
-          No hay mensajes todavia
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-nexus-100 to-nexus-200 dark:from-nexus-900/30 dark:to-nexus-800/30 rounded-3xl mb-4 shadow-inner-glow">
+              <span className="text-3xl">💬</span>
+            </div>
+            <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">No hay mensajes todavia</p>
+            <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">Comienza la conversacion</p>
+          </div>
         </div>
       )}
       {groupedMessages.map((group) => (
         <div key={group.date}>
-          <div className="flex items-center justify-center my-4">
-            <div className="px-3 py-1 bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-400 text-xs rounded-full font-medium shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-center my-5">
+            <div className="px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 dark:text-gray-400 text-xs rounded-full font-semibold shadow-sm border border-gray-200/50 dark:border-gray-700/50">
               {new Date(group.messages[0].created_at).toLocaleDateString('es', {
                 weekday: 'long', day: 'numeric', month: 'long',
               })}
@@ -338,8 +350,8 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
 
             if (msg.is_deleted) {
               return (
-                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`}>
-                  <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-400 dark:text-gray-500 text-sm italic">
+                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1.5`}>
+                  <div className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800/80 rounded-2xl text-gray-400 dark:text-gray-500 text-sm italic shadow-sm">
                     Mensaje eliminado
                   </div>
                 </div>
@@ -361,50 +373,50 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
                   <UserAvatar
                     name={`${msg.sender_nombre} ${msg.sender_apellido}`}
                     size="sm"
-                    className="mr-2 mt-1"
+                    className="mr-2.5 mt-1"
                   />
                 )}
-                {!isMe && !showAvatar && <div className="w-8 mr-2" />}
+                {!isMe && !showAvatar && <div className="w-8 mr-2.5" />}
 
                 <div className={`max-w-[85vw] sm:max-w-md ${isMe ? 'items-end' : 'items-start'}`}>
                   {!isMe && showAvatar && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 ml-1 mb-0.5 font-medium">
+                    <p className="text-[11px] text-nexus-600 dark:text-nexus-400 ml-1 mb-1 font-semibold">
                       {msg.sender_nombre} {msg.sender_apellido}
                     </p>
                   )}
 
                   <div
-                    className={`rounded-2xl overflow-hidden ${
+                    className={`rounded-2xl overflow-hidden transition-shadow ${
                       isMe
-                        ? 'bg-nexus-600 text-white rounded-br-md'
-                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-md shadow-sm'
-                    } ${isMedia ? 'p-1' : 'px-3 sm:px-4 py-2'}`}
+                        ? 'bg-gradient-to-br from-nexus-500 to-nexus-600 text-white rounded-br-lg shadow-md'
+                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200/60 dark:border-gray-700/60 rounded-bl-lg shadow-sm card-premium'
+                    } ${isMedia ? 'p-1.5' : 'px-4 py-2.5'}`}
                   >
                     {msg.reply_to && getReplyPreview(msg.reply_to)}
 
                     {editingMessage?.id === msg.id ? (
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-2">
                         <input
                           type="text"
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleEdit()}
-                          className="bg-transparent border-b border-white/30 outline-none text-sm py-1"
+                          className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 outline-none text-sm"
                           autoFocus
                         />
-                        <div className="flex gap-2 text-[10px]">
-                          <button onClick={() => setEditingMessage(null)} className="text-gray-300 hover:text-white">Cancelar</button>
-                          <button onClick={handleEdit} className="text-white font-medium hover:text-nexus-200">Guardar</button>
+                        <div className="flex gap-2 text-xs">
+                          <button onClick={() => setEditingMessage(null)} className="text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors">Cancelar</button>
+                          <button onClick={handleEdit} className="text-white font-medium hover:text-nexus-200 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors">Guardar</button>
                         </div>
                       </div>
                     ) : hasFile ? (
                       <FilePreview msg={msg} isMe={isMe} />
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
                     )}
 
                     {msg.is_pinned === 1 && (
-                      <div className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? 'text-nexus-200' : 'text-gray-400'}`}>
+                      <div className={`text-[10px] mt-1.5 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
                         📌 Mensaje fijado
                       </div>
                     )}
@@ -412,7 +424,7 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
 
                   {/* Reactions */}
                   {msg.reactions && msg.reactions.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-0.5 px-1">
+                    <div className="flex flex-wrap gap-1 mt-1 px-1">
                       {Object.entries(
                         msg.reactions.reduce((acc, r) => {
                           acc[r.emoji] = (acc[r.emoji] || 0) + 1;
@@ -422,10 +434,10 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
                         <button
                           key={emoji}
                           onClick={() => handleReact(msg.id, emoji)}
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 rounded-full text-xs hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all hover:scale-105"
                         >
                           <span>{emoji}</span>
-                          <span className="text-gray-500 dark:text-gray-400 text-[10px]">{count}</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">{count}</span>
                         </button>
                       ))}
                     </div>
@@ -433,12 +445,12 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
 
                   {/* Quick reaction button */}
                   {showReactPicker === msg.id && (
-                    <div className="flex gap-0.5 mt-1 p-1 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-0.5 mt-1.5 p-1.5 bg-white dark:bg-gray-800 rounded-2xl shadow-premium-lg border border-gray-200/60 dark:border-gray-700/60">
                       {QUICK_REACTIONS.map((emoji) => (
                         <button
                           key={emoji}
                           onClick={() => handleReact(msg.id, emoji)}
-                          className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-transform hover:scale-125"
+                          className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all hover:scale-125"
                         >
                           {emoji}
                         </button>
@@ -449,7 +461,7 @@ export default function MessageList({ messages, currentUserId, messagesEndRef, o
                   <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : ''}`}>
                     <p className={`text-[10px] ${isMe ? 'mr-1' : 'ml-1'} text-gray-400 dark:text-gray-500`}>
                       {formatDate(msg.created_at)}
-                      {msg.is_edited && <span className="ml-1">(editado)</span>}
+                      {msg.is_edited && <span className="ml-1 italic">(editado)</span>}
                     </p>
                     <ReadReceipt isMe={isMe} readByOthers={false} />
                   </div>

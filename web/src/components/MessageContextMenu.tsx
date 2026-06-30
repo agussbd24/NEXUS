@@ -40,48 +40,51 @@ export default function MessageContextMenu({
   return (
     <div
       ref={ref}
-      className="fixed z-[100] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px]"
+      className="fixed z-[100] bg-white dark:bg-gray-900 rounded-2xl shadow-premium-xl border border-gray-200/60 dark:border-gray-800/60 py-1.5 min-w-[200px] overflow-hidden"
       style={{ top: adjustedY, left: adjustedX }}
     >
       <button
         onClick={onReply}
-        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
-        <Reply className="w-4 h-4" /> Responder
+        <Reply className="w-4 h-4 text-gray-400" /> Responder
       </button>
       <button
         onClick={onCopy}
-        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
-        <Copy className="w-4 h-4" /> Copiar
+        <Copy className="w-4 h-4 text-gray-400" /> Copiar
       </button>
       <button
         onClick={onReact}
-        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
-        <Smile className="w-4 h-4" /> Reaccionar
+        <Smile className="w-4 h-4 text-gray-400" /> Reaccionar
       </button>
       <button
         onClick={onPin}
-        className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
-        <Pin className="w-4 h-4" /> Fijar mensaje
+        <Pin className="w-4 h-4 text-gray-400" /> Fijar mensaje
       </button>
       {isMe && (
         <button
           onClick={onEdit}
-          className="w-full px-3 py-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
-          <Pencil className="w-4 h-4" /> Editar
+          <Pencil className="w-4 h-4 text-gray-400" /> Editar
         </button>
       )}
       {(isMe || isAdmin) && (
-        <button
-          onClick={onDelete}
-          className="w-full px-3 py-2 flex items-center gap-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-        >
-          <Trash2 className="w-4 h-4" /> Eliminar
-        </button>
+        <>
+          <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+          <button
+            onClick={onDelete}
+            className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Eliminar
+          </button>
+        </>
       )}
     </div>
   );
