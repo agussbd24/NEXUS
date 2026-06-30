@@ -160,7 +160,7 @@ export default function MessageInput({ onSend, onTyping, conversationName }: Mes
           type="file"
           onChange={handleFileSelect}
           className="hidden"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4"
         />
 
         {/* Text input */}

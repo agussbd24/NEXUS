@@ -47,9 +47,6 @@ files.post('/upload', async (c) => {
 });
 
 files.get('/:key{.+}', async (c) => {
-  const authCtx = await authenticate(c.req.raw, c.env);
-  if (!authCtx) return errorResponse('No autorizado', 401);
-
   const key = c.req.param('key');
   const value = await c.env.SESSIONS.getWithMetadata(`file:${key}`);
 
@@ -66,6 +63,7 @@ files.get('/:key{.+}', async (c) => {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=31536000',
       'Content-Disposition': `inline; filename="${meta?.name || 'file'}"`,
+      'Access-Control-Allow-Origin': '*',
     },
   });
 });
