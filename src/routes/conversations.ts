@@ -10,13 +10,13 @@ conversations.get('/', async (c) => {
 
   const { results } = await c.env.DB.prepare(`
     SELECT c.*,
-      COALESCE(
-        (SELECT content FROM messages WHERE conversation_id = c.id AND is_deleted = 0 AND content IS NOT NULL AND content != '' ORDER BY created_at DESC LIMIT 1),
-        (SELECT '📎 ' || file_name FROM messages WHERE conversation_id = c.id AND is_deleted = 0 AND file_name IS NOT NULL ORDER BY created_at DESC LIMIT 1),
-        'Sin mensajes'
-      ) as last_message,
-      (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
-      (SELECT sender_id FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_sender,
+      CASE
+        WHEN last_msg.content IS NOT NULL AND last_msg.content != '' THEN last_msg.content
+        WHEN last_msg.file_name IS NOT NULL THEN '📎 ' || last_msg.file_name
+        ELSE 'Sin mensajes'
+      END as last_message,
+      last_msg.created_at as last_message_at,
+      last_msg.sender_id as last_message_sender,
       (SELECT COUNT(*) FROM messages m
         WHERE m.conversation_id = c.id
         AND m.created_at > COALESCE(
@@ -29,8 +29,14 @@ conversations.get('/', async (c) => {
       p.is_muted, p.is_archived, p.is_pinned
     FROM conversations c
     JOIN participants p ON c.id = p.conversation_id
+    LEFT JOIN LATERAL (
+      SELECT content, file_name, created_at, sender_id
+      FROM messages
+      WHERE conversation_id = c.id AND is_deleted = 0
+      ORDER BY created_at DESC LIMIT 1
+    ) last_msg ON 1=1
     WHERE p.user_id = ?
-    ORDER BY p.is_pinned DESC, last_message_at DESC NULLS LAST, c.created_at DESC
+    ORDER BY p.is_pinned DESC, last_msg.created_at DESC NULLS LAST, c.created_at DESC
   `).bind(authCtx.userId, authCtx.userId, authCtx.userId).all();
 
   const convoIds = results.map((r) => r.id);
