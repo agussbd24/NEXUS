@@ -19,8 +19,12 @@ export function useWebSocket(conversationId: number | null) {
       wsRef.current.close();
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${conversationId}?token=${token}`;
+    // Try same domain first, fallback to worker domain
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname.includes('pages.dev')
+      ? 'nexus-backend.agussbd24.workers.dev'
+      : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/chat/${conversationId}?token=${token}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
